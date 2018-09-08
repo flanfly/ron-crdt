@@ -1,0 +1,7 @@
+[package]
+name = "ron"
+version = "0.1.0"
+authors = ["Marcus Brinkmann <marcus.brinkmann@ruhr-uni-bochum.de>"]
+
+[dependencies]
+smallvec = "0.6"
