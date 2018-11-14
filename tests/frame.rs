@@ -19,6 +19,7 @@ fn op() {
         },
         location: Uuid::Name { name: 0, scope: 0 },
         atoms: vec![].into(),
+        term: Terminator::Reduced,
     };
 }
 
@@ -39,11 +40,12 @@ fn frame() {
         },
         location: Uuid::Name { name: 0, scope: 0 },
         atoms: vec![].into(),
+        term: Terminator::Raw,
     };
 
     let frame = Frame {
         terminate: false,
-        ops: vec![(op, Terminator::Raw)],
+        ops: vec![op],
     };
     assert_eq!(frame.to_string(), "*inc#0+0@0+0:0;");
 }

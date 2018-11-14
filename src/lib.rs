@@ -24,16 +24,19 @@
 //! object, we call this a frame.
 //!
 //! Special kinds of RON ops are used for protocol handshakes and
-//! frame headers (metadata for frames). These degenerate operations
-//! have special meaning, and often omit some of the metadata that is
-//! usually included in an operation (for example, a handshake query
-//! does not have a timestamp).
+//! frame headers (metadata for frames). These operations have special
+//! meaning, and often omit some of the metadata that is usually
+//! included in an operation (for example, a handshake query does not
+//! have a timestamp).
 
 extern crate smallvec;
+#[macro_use]
+extern crate nom;
 
 pub mod uuid;
 pub mod atom;
 pub mod frame;
+pub mod textparser;
 
 pub use uuid::Uuid;
 pub use atom::Atom;
