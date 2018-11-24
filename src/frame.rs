@@ -1,22 +1,129 @@
-use Op;
+use std::borrow::Cow;
+use {Op, Terminator};
 
-#[derive(Debug, PartialEq)]
-pub struct Frame {
-    /// The op list in this frame (uncompressed).
-    pub ops: Vec<Op>,
-    /// True if frame is terminated by '.'
-    pub terminate: bool,
+#[derive(Debug)]
+pub struct Frame<'a> {
+    body: Cow<'a, str>,
+    ptr: usize,
+    op: Op,
 }
 
-impl Frame {
-    pub fn to_string(&self) -> String {
-        let mut result = String::default();
-        for op in &self.ops {
-            result += &op.to_string();
+impl<'a> Frame<'a> {
+    pub fn parse<S>(s: S) -> Frame<'a> where S: Into<Cow<'a, str>> {
+        let op = Op{
+            typ: Default::default(),
+            event: Default::default(),
+            object: Default::default(),
+            location: Default::default(),
+            atoms: Default::default(),
+            terminator: Terminator::Reduced,
+        };
+        let mut ret = Frame{
+            body: s.into(),
+            ptr: 0,
+            op: op,
+        };
+
+        ret.advance();
+        ret
+    }
+
+    pub fn compress(mut ops: Vec<Op>) -> Self {
+        let mut txt = String::default();
+        let op = Op{
+            typ: Default::default(),
+            event: Default::default(),
+            object: Default::default(),
+            location: Default::default(),
+            atoms: Default::default(),
+            terminator: Terminator::Reduced,
+        };
+
+        ops.insert(0, op);
+
+        for win in ops[..].windows(2) {
+            txt += &win[1].compress(&win[0]);
         }
-        if self.terminate {
-            result += &".".to_string();
+
+        Self::parse(txt)
+    }
+
+    pub fn peek<'b>(&'b self) -> Option<&'b Op> {
+        if self.ptr > self.body.len() {
+            None
+        } else {
+            Some(&self.op)
         }
-        result
+    }
+
+    fn advance(&mut self) {
+        if self.ptr < self.body.len() {
+            let input = &self.body[self.ptr..];
+            match Op::next_op(&mut self.op, input) {
+                Some(p) => {
+                    self.ptr = p.as_ptr() as usize - self.body[..].as_ptr() as usize;
+                }
+                None => {
+                    self.ptr = self.body.len() + 1;
+                }
+            }
+        } else {
+            self.ptr = self.body.len() + 1;
+        }
+    }
+}
+
+impl<'a> Iterator for Frame<'a> {
+    type Item = Op;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.ptr > self.body.len() {
+            None
+        } else {
+            let op = self.op.clone();
+            self.advance();
+            Some(op)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn count() {
+        let frame = "*lww#test@0:0! @1:key'value' @2:number=1 *rga#text@3:0'T'! *rga#text@6:3, @4'e' @5'x' @6't' *lww#more:a=1;.";
+        let frame = Frame::parse(frame);
+        assert_eq!(frame.count(), 9);
+    }
+
+    #[test]
+    fn iter() {
+        let frame = "*lww#test@0:0!@1:key'value'@2:number=1*rga#text@3:0'T'!*rga#text@6:3,@4'e'@5'x'@6't'*lww#more:a=1;.";
+        let mut frame = Frame::parse(frame);
+
+        while let op@Some(_) = frame.peek().cloned() {
+            assert_eq!(op, frame.next());
+        }
+    }
+
+    #[test]
+    fn iter2() {
+        let frame = "*rga#test:0!@4'D'@5'E'";
+        let mut frame = Frame::parse(frame);
+
+        while let op@Some(_) = frame.peek().cloned() {
+            assert_eq!(op, frame.next());
+        }
+    }
+
+    #[test]
+    fn compress() {
+        let frame = "*lww#test@0:0!@1:key'value'@2:number=1*rga#text@3:0'T'!*rga#text@6:3,@4'e'@5'x'@6't'*lww#more:a=1;.";
+        let compressed = Frame::compress(Frame::parse(frame).into_iter().collect::<Vec<_>>());
+        let frame = Frame::parse(frame);
+
+        assert!(frame.eq(compressed));
     }
 }
