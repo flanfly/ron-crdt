@@ -452,6 +452,10 @@ impl Uuid {
     }
 }
 
+impl Default for Uuid {
+    fn default() -> Self { Uuid::zero() }
+}
+
 impl fmt::Display for Uuid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
