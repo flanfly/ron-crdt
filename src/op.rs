@@ -1,8 +1,10 @@
+use std::fmt;
+
 use smallvec::SmallVec;
 use Atom;
 use Uuid;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Terminator {
     // Raw ops are stand-alone within a frame.
     Raw,
@@ -13,6 +15,23 @@ pub enum Terminator {
     Reduced,
 }
 
+impl fmt::Debug for Terminator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl fmt::Display for Terminator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Terminator::Raw => f.write_str(";"),
+            Terminator::Reduced => f.write_str(","),
+            Terminator::Header => f.write_str("!"),
+            Terminator::Query => f.write_str("?"),
+        }
+    }
+}
+
 impl Default for Terminator {
     fn default() -> Terminator {
         Terminator::Reduced
@@ -20,15 +39,6 @@ impl Default for Terminator {
 }
 
 impl Terminator {
-    pub fn to_string(&self) -> &'static str {
-        match &self {
-            Terminator::Raw => ";",
-            Terminator::Query => "?",
-            Terminator::Header => "!",
-            Terminator::Reduced => ",",
-        }
-    }
-
     pub fn from_string(inp: &str) -> Result<Terminator, &'static str> {
         match &inp {
             &";" => Ok(Terminator::Raw),
@@ -50,7 +60,7 @@ impl Terminator {
 ///
 /// Every op consists of four UUIDs (type, object, event and re), a (possibly empty) sequence of
 /// atoms, and a terminator.
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
 pub struct Op {
     pub ty: Uuid,
     pub object: Uuid,
@@ -60,17 +70,28 @@ pub struct Op {
     pub term: Terminator,
 }
 
-impl Op {
-    pub fn to_string(&self) -> String {
-        let mut result = String::default();
-        result += &("*".to_string() + &self.ty.to_string());
-        result += &("#".to_string() + &self.object.to_string());
-        result += &("@".to_string() + &self.event.to_string());
-        result += &(":".to_string() + &self.location.to_string());
-        for atom in &self.atoms {
-            result += &atom.to_string();
-        }
-        result += &self.term.to_string();
-        result
+impl fmt::Debug for Op {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
     }
 }
+
+impl fmt::Display for Op {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "*{}#{}@{}:{}", self.ty, self.object, self.event,
+               self.location)?;
+
+        match self.atoms.len() {
+            0 => write!(f, "{}", self.term),
+            1 => write!(f, "{}{}", self.atoms[0], self.term),
+            _ => {
+                write!(f, "{}", self.atoms[0])?;
+                for atm in self.atoms[1..].iter() {
+                    write!(f, ", {}", atm)?;
+                }
+                write!(f, "{}", self.term)
+            }
+        }
+    }
+}
+
