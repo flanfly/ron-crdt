@@ -34,12 +34,12 @@ extern crate smallvec;
 extern crate nom;
 
 pub mod uuid;
+pub mod op;
 pub mod atom;
 pub mod frame;
 pub mod textparser;
 
 pub use uuid::Uuid;
 pub use atom::Atom;
-pub use frame::Op;
+pub use op::{Op, Terminator};
 pub use frame::Frame;
-pub use frame::Terminator;
