@@ -5,4 +5,3 @@ authors = ["Marcus Brinkmann <marcus.brinkmann@ruhr-uni-bochum.de>"]
 
 [dependencies]
 smallvec = "0.6"
-nom = "^4.0"

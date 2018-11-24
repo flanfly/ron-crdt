@@ -1,4 +1,7 @@
 use std::fmt;
+use std::i64;
+use std::f64;
+use std::str::FromStr;
 use Uuid;
 
 /// An Atom in RON is an immutable value of one of the types: UUID,
@@ -75,6 +78,64 @@ impl Atom {
             &Atom::String(_) => true,
             _ => false,
         }
+    }
+
+    pub fn parse<'a>(input: &'a str, prev_col: &Uuid, prev_row: &Uuid) -> Option<(Self, &'a str)> {
+        match input.trim_end().chars().next() {
+            Some('\'') => Self::parse_string(&input[1..]),
+            Some('=') => Self::parse_integer(&input[1..]),
+            Some('^') => Self::parse_float(&input[1..]),
+            Some('>') => Uuid::parse(&input[1..], prev_col, prev_row)
+                .map(|(uu,cdr)| (Atom::Uuid(uu), cdr)),
+            _ => None,
+        }
+    }
+
+    fn parse_integer<'a>(input: &'a str) -> Option<(Self, &'a str)> {
+        let p = input.chars().position(|c| !c.is_ascii_digit()).unwrap_or(input.len());
+        if p == 0 {
+            None
+        } else {
+            let (car, cdr) = input.split_at(p);
+            i64::from_str(car).ok().map(|i| (Atom::Integer(i), cdr))
+        }
+    }
+
+    fn parse_float<'a>(input: &'a str) -> Option<(Self, &'a str)> {
+        let p = input.chars().position(|c| {
+            !c.is_ascii_digit() && c != 'e' && c != 'E' && c != '.'
+        }).unwrap_or(input.len());
+        if p == 0 {
+            None
+        } else {
+            let (car, cdr) = input.split_at(p);
+            f64::from_str(car).ok().map(|i| (Atom::Float(i), cdr))
+        }
+    }
+
+    fn parse_string<'a>(input: &'a str) -> Option<(Self, &'a str)> {
+        let mut escaped = false;
+        for (off, ch) in input.char_indices() {
+            escaped = match (ch, escaped) {
+                ('\'', false) if off != 0 => {
+                    let (a, b) = input.split_at(off);
+                    return Some((Atom::String(a.to_string()), &b[1..]));
+                }
+                ('\'', false) => { return None }
+                ('\'', true) => false,
+
+                ('\\', false) => true,
+                ('\\', true) => false,
+
+                ('n', true) => false,
+                ('t', true) => false,
+
+                (_, false) => false,
+                (_, true) => false,
+            };
+        }
+
+        None
     }
 }
 
