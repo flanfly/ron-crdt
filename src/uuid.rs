@@ -1,3 +1,5 @@
+use std::fmt;
+
 /// UUIDs are used by RON to identify types, objects, events, etc.
 ///
 /// There are different kinds of UUIDs: Name, number, event and derived.
@@ -54,11 +56,6 @@ fn format_int(value: u64) -> String {
     result
 }
 
-/// Format an UUID with the given scheme and values.
-fn format_uuid(punct: &'static str, v1: u64, v2: u64) -> String {
-    format_int(v1) + punct + &format_int(v2)
-}
-
 impl Uuid {
     /// Return true if and only if this is a name Uuid.
     pub fn is_name(&self) -> bool {
@@ -91,15 +88,34 @@ impl Uuid {
             _ => false,
         }
     }
+}
 
-    /// Render a UUID as text (without compression).
-    pub fn to_string(&self) -> String {
+impl fmt::Display for Uuid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Uuid::Name { name, scope: 0 } => format_int(name),
-            &Uuid::Name { name, scope } => format_uuid("$", name, scope),
-            &Uuid::Number { value1, value2 } => format_uuid("%", value1, value2),
-            &Uuid::Event { timestamp, origin } => format_uuid("+", timestamp, origin),
-            &Uuid::Derived { timestamp, origin } => format_uuid("-", timestamp, origin),
+            &Uuid::Name{ name: 0, scope: 0,.. } => f.write_str("0"),
+            &Uuid::Name{ name, scope: 0 } =>
+                f.write_str(&format_int(name)),
+            &Uuid::Name{ name, scope } => {
+                f.write_str(&format_int(name))?;
+                f.write_str("$")?;
+                f.write_str(&format_int(scope))
+            }
+            &Uuid::Number{ value1, value2 } => {
+                f.write_str(&format_int(value1))?;
+                f.write_str("%")?;
+                f.write_str(&format_int(value2))
+            }
+            &Uuid::Derived{ timestamp, origin } => {
+                f.write_str(&format_int(timestamp))?;
+                f.write_str("-")?;
+                f.write_str(&format_int(origin))
+            }
+            &Uuid::Event{ timestamp, origin } => {
+                f.write_str(&format_int(timestamp))?;
+                f.write_str("+")?;
+                f.write_str(&format_int(origin))
+            }
         }
     }
 }
@@ -115,7 +131,7 @@ fn global_name_uuid() {
     assert_eq!(uuid.is_number(), false);
     assert_eq!(uuid.is_event(), false);
     assert_eq!(uuid.is_derived(), false);
-    assert_eq!(uuid.to_string(), "inc");
+    assert_eq!(format!("{}", uuid), "inc");
 }
 
 #[test]
@@ -129,7 +145,7 @@ fn scoped_name_uuid() {
     assert_eq!(uuid.is_number(), false);
     assert_eq!(uuid.is_event(), false);
     assert_eq!(uuid.is_derived(), false);
-    assert_eq!(uuid.to_string(), "todo$marcus");
+    assert_eq!(format!("{}", uuid), "todo$marcus");
 }
 
 #[test]
@@ -143,7 +159,7 @@ fn number_uuid() {
     assert_eq!(uuid.is_number(), true);
     assert_eq!(uuid.is_event(), false);
     assert_eq!(uuid.is_derived(), false);
-    assert_eq!(uuid.to_string(), "000000000A%000000000K");
+    assert_eq!(format!("{}", uuid), "000000000A%000000000K");
 }
 
 #[test]
@@ -157,7 +173,7 @@ fn event_uuid() {
     assert_eq!(uuid.is_number(), false);
     assert_eq!(uuid.is_event(), true);
     assert_eq!(uuid.is_derived(), false);
-    assert_eq!(uuid.to_string(), "0+0");
+    assert_eq!(format!("{}", uuid), "0+0");
 }
 
 #[test]
@@ -171,5 +187,16 @@ fn derived_uuid() {
     assert_eq!(uuid.is_number(), false);
     assert_eq!(uuid.is_event(), false);
     assert_eq!(uuid.is_derived(), true);
-    assert_eq!(uuid.to_string(), "0-0");
+    assert_eq!(format!("{}", uuid), "0-0");
+}
+
+#[test]
+fn well_known() {
+    let error = Uuid::Name{ name: 1152921504606846975, scope: 0 };
+    let never = Uuid::Name{ name: 1134907106097364992, scope: 0 };
+    let inc = Uuid::Name{ name: 824893205576155136, scope: 0 };
+
+    assert_eq!(format!("{}", error), "~~~~~~~~~~");
+    assert_eq!(format!("{}", never), "~");
+    assert_eq!(format!("{}", inc), "inc");
 }
