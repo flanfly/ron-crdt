@@ -1,13 +1,47 @@
+use std::fmt;
 use Uuid;
 
 /// An Atom in RON is an immutable value of one of the types: UUID,
 /// integer, string and float.
-#[derive(Debug, PartialEq)]
 pub enum Atom {
     Uuid(Uuid),
     Integer(i64),
     Float(f64),
     String(String),
+}
+
+impl PartialEq for Atom {
+    fn eq(&self, other: &Atom) -> bool {
+        match (self, other) {
+            (&Atom::String(ref a), &Atom::String(ref b)) => a == b,
+            (&Atom::Integer(ref a), &Atom::Integer(ref b)) => a == b,
+            (&Atom::Uuid(ref a), &Atom::Uuid(ref b)) => a == b,
+            (&Atom::Float(ref a), &Atom::Float(ref b)) => a - b < 0.0001,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Atom {}
+
+impl fmt::Debug for Atom {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl fmt::Display for Atom {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Atom::String(ref s) => {
+                let s = format!("{:?}", s);
+                write!(f, "'{}'", &s[1..s.len() - 1])
+            }
+            &Atom::Integer(ref s) => write!(f, "={}", s),
+            &Atom::Float(ref s) => write!(f, "^{}", s),
+            &Atom::Uuid(ref s) => write!(f, ">{}", s.to_string()),
+        }
+    }
 }
 
 impl Atom {
@@ -42,16 +76,6 @@ impl Atom {
             _ => false,
         }
     }
-
-    /// Render the atom as text.
-    pub fn to_string(&self) -> String {
-        match self {
-            &Atom::Uuid(uuid) => ">".to_string() + &uuid.to_string(),
-            &Atom::Integer(nr) => "=".to_string() + &nr.to_string(),
-            &Atom::Float(flt) => "^".to_string() + &flt.to_string(),
-            &Atom::String(ref str) => "'".to_string() + &str + &"'".to_string(),
-        }
-    }
 }
 
 #[test]
@@ -61,7 +85,7 @@ fn atom_uuid() {
     assert_eq!(atom.is_integer(), false);
     assert_eq!(atom.is_float(), false);
     assert_eq!(atom.is_string(), false);
-    assert_eq!(atom.to_string(), ">0");
+    assert_eq!(&format!("{}", atom), ">0");
 }
 
 #[test]
@@ -71,7 +95,7 @@ fn atom_integer() {
     assert_eq!(atom.is_integer(), true);
     assert_eq!(atom.is_float(), false);
     assert_eq!(atom.is_string(), false);
-    assert_eq!(atom.to_string(), "=42");
+    assert_eq!(&format!("{}", atom), "=42");
 }
 
 #[test]
@@ -81,7 +105,7 @@ fn atom_float() {
     assert_eq!(atom.is_integer(), false);
     assert_eq!(atom.is_float(), true);
     assert_eq!(atom.is_string(), false);
-    assert_eq!(atom.to_string(), "^3.14");
+    assert_eq!(&format!("{}", atom), "^3.14");
 }
 
 #[test]
@@ -91,5 +115,5 @@ fn atom_string() {
     assert_eq!(atom.is_integer(), false);
     assert_eq!(atom.is_float(), false);
     assert_eq!(atom.is_string(), true);
-    assert_eq!(atom.to_string(), "'atom'");
+    assert_eq!(&format!("{}", atom), "'atom'");
 }
