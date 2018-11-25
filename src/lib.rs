@@ -30,6 +30,7 @@
 //! have a timestamp).
 
 extern crate smallvec;
+extern crate chrono;
 
 pub mod uuid;
 pub mod op;

@@ -1,4 +1,12 @@
 use std::fmt;
+use std::time::SystemTime;
+use std::cmp::Ordering;
+use std::sync::atomic::{self, AtomicUsize, ATOMIC_USIZE_INIT};
+
+use chrono::{Utc, DateTime, Datelike, Timelike};
+
+static UUID_NODE_ID: AtomicUsize = ATOMIC_USIZE_INIT;
+static UUID_SEQUENCE: AtomicUsize = ATOMIC_USIZE_INIT;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Scheme { Name, Event, Number, Derived, }
@@ -91,7 +99,32 @@ fn format_int(value: u64) -> String {
 }
 
 impl Uuid {
-    /// Return true if and only if this is a name Uuid.
+     /// Sets the default UUID origin. `s` must not be longer than 10 characters and only consist of
+    /// [0-9a-zA-Z~_].
+    pub fn set_node_id(val: u64) {
+        UUID_NODE_ID.store(val as usize, atomic::Ordering::Relaxed);
+    }
+
+    /// The current default UUID origin. Initially "0".
+    pub fn node_id() -> u64 {
+        UUID_NODE_ID.load(atomic::Ordering::Relaxed) as u64
+    }
+
+    /// New UUID with the default origin (see `node_id` and `set_node_id`) and the current time.
+    /// Ignoring leap seconds and other events that mess with the system time all calls to this
+    /// functions return unique UUID (duh).
+    pub fn now() -> Self {
+        Uuid::Event{
+            origin: Self::node_id(),
+            timestamp:  Self::timestamp(),
+        }
+    }
+
+    pub fn zero() -> Self {
+        Uuid::Name{ name: 0, scope: 0 }
+    }
+
+   /// Return true if and only if this is a name Uuid.
     pub fn is_name(&self) -> bool {
         match self {
             &Uuid::Name { .. } => true,
@@ -120,37 +153,6 @@ impl Uuid {
         match self {
             &Uuid::Derived { .. } => true,
             _ => false,
-        }
-    }
-
-    pub fn high(&self) -> u64 {
-        match self {
-            &Uuid::Name{ name,.. } => name,
-            &Uuid::Event{ timestamp,.. } => timestamp,
-            &Uuid::Number{ value1,.. } => value1,
-            &Uuid::Derived{ timestamp,.. } => timestamp,
-        }
-    }
-
-    pub fn low(&self) -> u64 {
-        match self {
-            &Uuid::Name{ scope,.. } => scope,
-            &Uuid::Event{ origin,.. } => origin,
-            &Uuid::Number{ value2,.. } => value2,
-            &Uuid::Derived{ origin,.. } => origin,
-        }
-    }
-
-    pub fn zero() -> Self {
-        Uuid::Name{ name: 0, scope: 0 }
-    }
-
-    fn new(hi: u64, lo: u64, sch: Scheme) -> Self {
-        match sch {
-            Scheme::Name => Uuid::Name{ name: hi, scope: lo },
-            Scheme::Event => Uuid::Event{ timestamp: hi, origin: lo },
-            Scheme::Derived => Uuid::Derived{ timestamp: hi, origin: lo },
-            Scheme::Number => Uuid::Number{ value1: hi, value2: lo },
         }
     }
 
@@ -450,6 +452,63 @@ impl Uuid {
             Uuid::Derived{ .. } => Scheme::Derived,
         }
     }
+
+    fn high(&self) -> u64 {
+        match self {
+            &Uuid::Name{ name,.. } => name,
+            &Uuid::Event{ timestamp,.. } => timestamp,
+            &Uuid::Number{ value1,.. } => value1,
+            &Uuid::Derived{ timestamp,.. } => timestamp,
+        }
+    }
+
+    fn low(&self) -> u64 {
+        match self {
+            &Uuid::Name{ scope,.. } => scope,
+            &Uuid::Event{ origin,.. } => origin,
+            &Uuid::Number{ value2,.. } => value2,
+            &Uuid::Derived{ origin,.. } => origin,
+        }
+    }
+
+    fn new(hi: u64, lo: u64, sch: Scheme) -> Self {
+        match sch {
+            Scheme::Name => Uuid::Name{ name: hi, scope: lo },
+            Scheme::Event => Uuid::Event{ timestamp: hi, origin: lo },
+            Scheme::Derived => Uuid::Derived{ timestamp: hi, origin: lo },
+            Scheme::Number => Uuid::Number{ value1: hi, value2: lo },
+        }
+    }
+
+    fn timestamp() -> u64 {
+        use std::time::Duration;
+        use std::thread::sleep;
+
+        let now = SystemTime::now();
+        let seq = (UUID_SEQUENCE.fetch_add(1, atomic::Ordering::SeqCst) & 0b111111_111111) as u64;
+
+        // we wait for the clock to advance after sequence number overflows to avoid creating
+        // duplicated uuids. This can happen if we try to generate more than 4k instances in
+        // under one ms.
+        if seq == 0b111111_111111 {
+            while now == SystemTime::now() {
+                sleep(Duration::from_millis(1));
+            }
+        }
+
+        let dt: DateTime<Utc> = now.into();
+        let months = (2010 + dt.year() as u64 * 12 + dt.month0() as u64) & 0b111111_111111;;
+        let ts = (months << (8 * 6))
+               | ((dt.day0() as u64   & 0b111111) << (7 * 6))
+               | ((dt.hour() as u64   & 0b111111) << (6 * 6))
+               | ((dt.minute() as u64 & 0b111111) << (5 * 6))
+               | ((dt.second() as u64 & 0b111111) << (4 * 6))
+               | (((dt.nanosecond() as u64 / 1_000_000) & 0b111111_111111) << (2 * 6))
+               | seq;
+
+        ts
+    }
+
 }
 
 impl Default for Uuid {
