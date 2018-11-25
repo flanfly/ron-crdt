@@ -23,7 +23,7 @@ fn op() {
     };
 }
 
-/*#[test]
+#[test]
 fn frame() {
     let op = Op {
         ty: Uuid::Name {
@@ -43,9 +43,7 @@ fn frame() {
         term: Terminator::Raw,
     };
 
-    let frame = Frame {
-        terminate: false,
-        ops: vec![op],
-    };
-    assert_eq!(frame.to_string(), "*inc#0+0@0+0:0;");
-}*/
+    let frame = Frame::compress(vec![op]);
+
+    assert_eq!(frame.body(), "*inc#+@+;");
+}

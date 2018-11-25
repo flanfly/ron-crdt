@@ -56,6 +56,10 @@ impl<'a> Frame<'a> {
         }
     }
 
+    pub fn body(&self) -> &str {
+        &self.body
+    }
+
     fn advance(&mut self) {
         if self.ptr < self.body.len() {
             let input = &self.body[self.ptr..];
