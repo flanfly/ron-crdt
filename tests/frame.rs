@@ -23,7 +23,7 @@ fn op() {
     };
 }
 
-#[test]
+/*#[test]
 fn frame() {
     let op = Op {
         ty: Uuid::Name {
@@ -48,4 +48,4 @@ fn frame() {
         ops: vec![op],
     };
     assert_eq!(frame.to_string(), "*inc#0+0@0+0:0;");
-}
+}*/

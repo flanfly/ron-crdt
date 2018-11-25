@@ -6,6 +6,7 @@ use Uuid;
 
 /// An Atom in RON is an immutable value of one of the types: UUID,
 /// integer, string and float.
+#[derive(Clone)]
 pub enum Atom {
     Uuid(Uuid),
     Integer(i64),

@@ -11,12 +11,12 @@ pub struct Frame<'a> {
 impl<'a> Frame<'a> {
     pub fn parse<S>(s: S) -> Frame<'a> where S: Into<Cow<'a, str>> {
         let op = Op{
-            typ: Default::default(),
+            ty: Default::default(),
             event: Default::default(),
             object: Default::default(),
             location: Default::default(),
             atoms: Default::default(),
-            terminator: Terminator::Reduced,
+            term: Terminator::Reduced,
         };
         let mut ret = Frame{
             body: s.into(),
@@ -31,12 +31,12 @@ impl<'a> Frame<'a> {
     pub fn compress(mut ops: Vec<Op>) -> Self {
         let mut txt = String::default();
         let op = Op{
-            typ: Default::default(),
+            ty: Default::default(),
             event: Default::default(),
             object: Default::default(),
             location: Default::default(),
             atoms: Default::default(),
-            terminator: Terminator::Reduced,
+            term: Terminator::Reduced,
         };
 
         ops.insert(0, op);
@@ -59,7 +59,7 @@ impl<'a> Frame<'a> {
     fn advance(&mut self) {
         if self.ptr < self.body.len() {
             let input = &self.body[self.ptr..];
-            match Op::next_op(&mut self.op, input) {
+            match Op::parse_inplace(&mut self.op, input) {
                 Some(p) => {
                     self.ptr = p.as_ptr() as usize - self.body[..].as_ptr() as usize;
                 }
@@ -87,43 +87,38 @@ impl<'a> Iterator for Frame<'a> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[test]
+fn count() {
+    let frame = "*lww#test@0:0! @1:key'value' @2:number=1 *rga#text@3:0'T'! *rga#text@6:3, @4'e' @5'x' @6't' *lww#more:a=1;.";
+    let frame = Frame::parse(frame);
+    assert_eq!(frame.count(), 9);
+}
 
-    #[test]
-    fn count() {
-        let frame = "*lww#test@0:0! @1:key'value' @2:number=1 *rga#text@3:0'T'! *rga#text@6:3, @4'e' @5'x' @6't' *lww#more:a=1;.";
-        let frame = Frame::parse(frame);
-        assert_eq!(frame.count(), 9);
+#[test]
+fn iter() {
+    let frame = "*lww#test@0:0!@1:key'value'@2:number=1*rga#text@3:0'T'!*rga#text@6:3,@4'e'@5'x'@6't'*lww#more:a=1;.";
+    let mut frame = Frame::parse(frame);
+
+    while let op@Some(_) = frame.peek().cloned() {
+        assert_eq!(op, frame.next());
     }
+}
 
-    #[test]
-    fn iter() {
-        let frame = "*lww#test@0:0!@1:key'value'@2:number=1*rga#text@3:0'T'!*rga#text@6:3,@4'e'@5'x'@6't'*lww#more:a=1;.";
-        let mut frame = Frame::parse(frame);
+#[test]
+fn iter2() {
+    let frame = "*rga#test:0!@4'D'@5'E'";
+    let mut frame = Frame::parse(frame);
 
-        while let op@Some(_) = frame.peek().cloned() {
-            assert_eq!(op, frame.next());
-        }
+    while let op@Some(_) = frame.peek().cloned() {
+        assert_eq!(op, frame.next());
     }
+}
 
-    #[test]
-    fn iter2() {
-        let frame = "*rga#test:0!@4'D'@5'E'";
-        let mut frame = Frame::parse(frame);
+#[test]
+fn compress() {
+    let frame = "*lww#test@0:0!@1:key'value'@2:number=1*rga#text@3:0'T'!*rga#text@6:3,@4'e'@5'x'@6't'*lww#more:a=1;.";
+    let compressed = Frame::compress(Frame::parse(frame).into_iter().collect::<Vec<_>>());
+    let frame = Frame::parse(frame);
 
-        while let op@Some(_) = frame.peek().cloned() {
-            assert_eq!(op, frame.next());
-        }
-    }
-
-    #[test]
-    fn compress() {
-        let frame = "*lww#test@0:0!@1:key'value'@2:number=1*rga#text@3:0'T'!*rga#text@6:3,@4'e'@5'x'@6't'*lww#more:a=1;.";
-        let compressed = Frame::compress(Frame::parse(frame).into_iter().collect::<Vec<_>>());
-        let frame = Frame::parse(frame);
-
-        assert!(frame.eq(compressed));
-    }
+    assert!(frame.eq(compressed));
 }
