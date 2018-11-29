@@ -1,5 +1,6 @@
 use std::f64;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::i64;
 use std::str::FromStr;
 use UUID;
@@ -12,6 +13,17 @@ pub enum Atom {
     Integer(i64),
     Float(f64),
     String(String),
+}
+
+impl Hash for Atom {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            &Atom::String(ref s) => s.hash(state),
+            &Atom::Integer(ref s) => s.hash(state),
+            &Atom::Float(ref s) => format!("{}", s).hash(state),
+            &Atom::UUID(ref s) => s.hash(state),
+        }
+    }
 }
 
 impl PartialEq for Atom {
