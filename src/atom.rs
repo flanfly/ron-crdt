@@ -81,15 +81,18 @@ impl Atom {
         }
     }
 
+    /// Parse a single atom, returning the Atom and the remaining string. If `context` is not
+    /// `None` UUID Atoms may be compressed against (`previous column UUID` / `previous row UUID`).
     pub fn parse<'a>(
-        input: &'a str, prev_col: &Uuid, prev_row: &Uuid,
+        input: &'a str, context: Option<(&Uuid, &Uuid)>,
     ) -> Option<(Self, &'a str)> {
-        match input.trim_end().chars().next() {
+        let input = input.trim_start();
+        match input.chars().next() {
             Some('\'') => Self::parse_string(&input[1..]),
             Some('=') => Self::parse_integer(&input[1..]),
             Some('^') => Self::parse_float(&input[1..]),
             Some('>') => {
-                Uuid::parse(&input[1..], prev_col, prev_row)
+                Uuid::parse(&input[1..], context)
                     .map(|(uu, cdr)| (Atom::Uuid(uu), cdr))
             }
             _ => None,
@@ -99,7 +102,7 @@ impl Atom {
     fn parse_integer<'a>(input: &'a str) -> Option<(Self, &'a str)> {
         let p = input
             .chars()
-            .position(|c| !c.is_ascii_digit())
+            .position(|c| !c.is_ascii_digit() && c != '-' && c != '+')
             .unwrap_or(input.len());
         if p == 0 {
             None
@@ -113,7 +116,12 @@ impl Atom {
         let p = input
             .chars()
             .position(|c| {
-                !c.is_ascii_digit() && c != 'e' && c != 'E' && c != '.'
+                !c.is_ascii_digit()
+                    && c != 'e'
+                    && c != 'E'
+                    && c != '.'
+                    && c != '-'
+                    && c != '+'
             })
             .unwrap_or(input.len());
         if p == 0 {

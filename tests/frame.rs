@@ -33,5 +33,5 @@ fn frame() {
 
     let frame = Frame::compress(vec![op]);
 
-    assert_eq!(frame.body(), "*inc#+@+;");
+    assert_eq!(frame.body(), "*inc#0+0@0+0:0;");
 }

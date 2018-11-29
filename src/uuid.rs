@@ -1,4 +1,3 @@
-use std::cmp::Ordering;
 use std::fmt;
 use std::sync::atomic::{self, AtomicUsize, ATOMIC_USIZE_INIT};
 use std::time::SystemTime;
@@ -146,11 +145,13 @@ impl Uuid {
         }
     }
 
+    /// Parse a single UUID and return the remaining string. The `context` argument is the pair
+    /// `previous column UUID` / `previous row UUID` or `None`.
     pub fn parse<'a>(
-        input: &'a str, prev_col: &Uuid, prev_row: &Uuid,
+        input: &'a str, context: Option<(&Uuid, &Uuid)>,
     ) -> Option<(Uuid, &'a str)> {
         let mut state = ParserState::Start;
-        let mut prev = prev_col;
+        let mut prev = context.map(|x| x.0);
 
         for (off, ch) in input.char_indices() {
             eprintln!("ch: {} state: {:?}", ch, state);
@@ -218,7 +219,7 @@ impl Uuid {
                         } => {
                             let lo = partial | (val as u64);
                             let uu = Uuid::new(value, lo, scheme);
-                            return Some((uu, &input[off..]));
+                            return Some((uu, &input[off + 1..]));
                         }
 
                         _ => {
@@ -227,7 +228,8 @@ impl Uuid {
                     }
                 }
                 // backref to column
-                b'(' | b'[' | b'{' | b'}' | b']' | b')' => {
+                b'(' | b'[' | b'{' | b'}' | b']' | b')' if prev.is_some() => {
+                    let prev = prev.unwrap();
                     let (mask, ch) = match ch as u8 {
                         b'(' => (0xffffff000000000, 5),
                         b'[' => (0xfffffffc0000000, 6),
@@ -283,7 +285,7 @@ impl Uuid {
 
                 // backref to row
                 b'`' => {
-                    prev = prev_row;
+                    prev = context.map(|x| x.1);
                 }
 
                 // hi/lo division
@@ -297,10 +299,10 @@ impl Uuid {
                     };
 
                     match state {
-                        ParserState::Start => {
+                        ParserState::Start if prev.is_some() => {
                             state = ParserState::Origin {
                                 scheme: sch,
-                                value: prev.high(),
+                                value: prev.unwrap().high(),
                                 partial: 0,
                                 char_index: 9,
                             };
@@ -331,29 +333,47 @@ impl Uuid {
                 _ => {
                     match state {
                         ParserState::Start => {
-                            let uu = Uuid::zero();
-                            return Some((uu, &input[off..]));
+                            return None;
                         }
                         ParserState::NameOrValue {
                             partial,
                             is_full: false,
                             ..
-                        } => {
-                            let uu =
-                                Uuid::new(partial, prev.low(), prev.scheme());
+                        } if prev.is_some() => {
+                            let uu = Uuid::new(
+                                partial,
+                                prev.unwrap().low(),
+                                prev.unwrap().scheme(),
+                            );
                             return Some((uu, &input[off..]));
                         }
                         ParserState::NameOrValue { partial, .. } => {
                             let uu = Uuid::Name { name: partial, scope: 0 };
                             return Some((uu, &input[off..]));
                         }
-                        ParserState::Sign { value, is_full: false } => {
-                            let uu =
-                                Uuid::new(value, prev.low(), prev.scheme());
+                        ParserState::Sign { value, is_full: false }
+                            if prev.is_some() =>
+                        {
+                            let uu = Uuid::new(
+                                value,
+                                prev.unwrap().low(),
+                                prev.unwrap().scheme(),
+                            );
                             return Some((uu, &input[off..]));
                         }
                         ParserState::Sign { value, .. } => {
                             let uu = Uuid::Name { name: value, scope: 0 };
+                            return Some((uu, &input[off..]));
+                        }
+                        ParserState::Origin {
+                            value,
+                            partial: 0,
+                            scheme,
+                            char_index: 9,
+                            ..
+                        } if prev.is_some() => {
+                            let uu =
+                                Uuid::new(value, prev.unwrap().low(), scheme);
                             return Some((uu, &input[off..]));
                         }
                         ParserState::Origin {
@@ -371,27 +391,38 @@ impl Uuid {
         // stream ended
         match state {
             ParserState::Start => {
-                let uu = Uuid::zero();
-                return Some((uu, &input[0..0]));
+                return None;
             }
-            ParserState::NameOrValue { partial, is_full: false, .. } => {
-                let uu = Uuid::new(partial, prev.low(), prev.scheme());
+            ParserState::NameOrValue { partial, is_full: false, .. }
+                if prev.is_some() =>
+            {
+                let uu = Uuid::new(
+                    partial,
+                    prev.unwrap().low(),
+                    prev.unwrap().scheme(),
+                );
                 return Some((uu, &input[0..0]));
             }
             ParserState::NameOrValue { partial, .. } => {
                 let uu = Uuid::Name { name: partial, scope: 0 };
                 return Some((uu, &input[0..0]));
             }
-            ParserState::Sign { value, is_full: false } => {
-                let uu = Uuid::new(value, prev.low(), prev.scheme());
+            ParserState::Sign { value, is_full: false } if prev.is_some() => {
+                let uu = Uuid::new(
+                    value,
+                    prev.unwrap().low(),
+                    prev.unwrap().scheme(),
+                );
                 return Some((uu, &input[0..0]));
             }
             ParserState::Sign { value, .. } => {
                 let uu = Uuid::Name { name: value, scope: 0 };
                 return Some((uu, &input[0..0]));
             }
-            ParserState::Origin { value, scheme, char_index: 9, .. } => {
-                let uu = Uuid::new(value, prev.low(), scheme);
+            ParserState::Origin { value, scheme, char_index: 9, .. }
+                if prev.is_some() =>
+            {
+                let uu = Uuid::new(value, prev.unwrap().low(), scheme);
                 return Some((uu, &input[0..0]));
             }
             ParserState::Origin { value, partial, scheme, .. } => {
@@ -401,37 +432,51 @@ impl Uuid {
         }
     }
 
-    pub fn compress(&self, prev_col: &Uuid, _prev_row: &Uuid) -> String {
-        if self.high() >> 60 != prev_col.high() >> 60 {
+    /// Serialize this UUID the text optionally compressing it against (`previous column UUID` /
+    /// `previous row UUID`) if context is not `None`.
+    pub fn compress(&self, context: Option<(&Uuid, &Uuid)>) -> String {
+        if context.is_none()
+            || self.high() >> 60 != context.unwrap().0.high() >> 60
+        {
             // don't compress UUIDs with different varities
             return format!("{}", self);
-        }
-
-        let ret = Self::compress_int64(self.high(), prev_col.high());
-        if self.low() == 0 && self.scheme() == Scheme::Name {
-            ret
         } else {
-            let origin = Self::compress_int64(self.low(), prev_col.low());
-            let orig_is_compr = origin
-                .bytes()
-                .next()
-                .map(|c| {
-                    c == b'{'
-                        || c == b'['
-                        || c == b'('
-                        || c == b'}'
-                        || c == b']'
-                        || c == b')'
-                })
-                .unwrap_or(false);
+            let (prev_col, _) = context.unwrap();
 
-            if self.scheme() == prev_col.scheme()
-                && orig_is_compr
-                && !ret.is_empty()
-            {
-                ret + &origin
+            let ret = Self::compress_int64(self.high(), prev_col.high());
+            if self.low() == 0 && self.scheme() == Scheme::Name {
+                if ret.is_empty() {
+                    "0".to_string()
+                } else {
+                    ret
+                }
             } else {
-                ret + &format!("{}{}", self.scheme(), origin)
+                let origin = Self::compress_int64(self.low(), prev_col.low());
+                let orig_is_compr = origin
+                    .bytes()
+                    .next()
+                    .map(|c| {
+                        c == b'{'
+                            || c == b'['
+                            || c == b'('
+                            || c == b'}'
+                            || c == b']'
+                            || c == b')'
+                    })
+                    .unwrap_or(false);
+
+                if self.scheme() == prev_col.scheme()
+                    && orig_is_compr
+                    && !ret.is_empty()
+                {
+                    ret + &origin
+                } else if self.scheme() == prev_col.scheme()
+                    && origin.is_empty()
+                {
+                    ret + &format!("{}", self.scheme())
+                } else {
+                    ret + &format!("{}{}", self.scheme(), origin)
+                }
             }
         }
     }
@@ -694,9 +739,9 @@ fn compress() {
     let z = Uuid::zero();
 
     for (ctx, uu, exp) in tris {
-        let ctx = Uuid::parse(ctx, &z, &z).unwrap().0;
-        let uu = Uuid::parse(uu, &z, &z).unwrap().0;
-        let comp = uu.compress(&ctx, &ctx);
+        let ctx = Uuid::parse(ctx, Some((&z, &z))).unwrap().0;
+        let uu = Uuid::parse(uu, Some((&z, &z))).unwrap().0;
+        let comp = uu.compress(Some((&ctx, &ctx)));
 
         assert_eq!(comp, exp);
     }
@@ -724,14 +769,14 @@ fn parse_some() {
 
     for (ctx, uu, exp) in tris {
         eprintln!("{}, {}, {}", ctx, uu, exp);
-        let ctx = Uuid::parse(ctx, &z, &z).unwrap().0;
+        let ctx = Uuid::parse(ctx, Some((&z, &z))).unwrap().0;
         eprintln!("ctx: {:?}", ctx);
         eprintln!("parse ctx: {}", ctx);
-        let uu = Uuid::parse(uu, &ctx, &ctx).unwrap().0;
+        let uu = Uuid::parse(uu, Some((&ctx, &ctx))).unwrap().0;
         eprintln!("uu: {:?}", uu);
         eprintln!("parse uu: {}", uu);
 
-        assert_eq!(Uuid::compress(&uu, &z, &z), exp);
+        assert_eq!(Uuid::compress(&uu, Some((&z, &z))), exp);
     }
 }
 
@@ -772,12 +817,12 @@ fn parse_all() {
         (")A+(B", "012345678A+abcdB"),   // 11111
     ];
     let z = Uuid::zero();
-    let ctx = Uuid::parse("0123456789-abcdefghi", &z, &z).unwrap().0;
+    let ctx = Uuid::parse("0123456789-abcdefghi", Some((&z, &z))).unwrap().0;
     for (uu, exp) in pairs {
         if exp.is_empty() {
-            assert!(Uuid::parse(uu, &ctx, &ctx).is_none());
+            assert!(Uuid::parse(uu, Some((&ctx, &ctx))).is_none());
         } else {
-            let uu = Uuid::parse(uu, &ctx, &ctx).unwrap().0;
+            let uu = Uuid::parse(uu, Some((&ctx, &ctx))).unwrap().0;
             assert_eq!(format!("{}", uu), exp);
         }
     }

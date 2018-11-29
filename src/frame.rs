@@ -1,11 +1,11 @@
 use std::borrow::Cow;
-use {Op, Terminator};
+use Op;
 
 #[derive(Debug)]
 pub struct Frame<'a> {
     body: Cow<'a, str>,
     ptr: usize,
-    op: Op,
+    op: Option<Op>,
 }
 
 impl<'a> Frame<'a> {
@@ -13,35 +13,21 @@ impl<'a> Frame<'a> {
     where
         S: Into<Cow<'a, str>>,
     {
-        let op = Op {
-            ty: Default::default(),
-            event: Default::default(),
-            object: Default::default(),
-            location: Default::default(),
-            atoms: Default::default(),
-            term: Terminator::Reduced,
-        };
-        let mut ret = Frame { body: s.into(), ptr: 0, op: op };
+        let mut ret = Frame { body: s.into(), ptr: 0, op: None };
 
         ret.advance();
         ret
     }
 
-    pub fn compress(mut ops: Vec<Op>) -> Self {
-        let mut txt = String::default();
-        let op = Op {
-            ty: Default::default(),
-            event: Default::default(),
-            object: Default::default(),
-            location: Default::default(),
-            atoms: Default::default(),
-            term: Terminator::Reduced,
-        };
+    pub fn compress(ops: Vec<Op>) -> Self {
+        if ops.is_empty() {
+            return Self::parse("");
+        }
 
-        ops.insert(0, op);
+        let mut txt = ops[0].compress(None);
 
         for win in ops[..].windows(2) {
-            txt += &win[1].compress(&win[0]);
+            txt += &win[1].compress(Some(&win[0]));
         }
 
         Self::parse(txt)
@@ -51,7 +37,7 @@ impl<'a> Frame<'a> {
         if self.ptr > self.body.len() {
             None
         } else {
-            Some(&self.op)
+            self.op.as_ref()
         }
     }
 
@@ -84,9 +70,12 @@ impl<'a> Iterator for Frame<'a> {
         if self.ptr > self.body.len() {
             None
         } else {
-            let op = self.op.clone();
-            self.advance();
-            Some(op)
+            if let Some(op) = self.op.clone() {
+                self.advance();
+                Some(op)
+            } else {
+                None
+            }
         }
     }
 }
@@ -116,14 +105,4 @@ fn iter2() {
     while let op @ Some(_) = frame.peek().cloned() {
         assert_eq!(op, frame.next());
     }
-}
-
-#[test]
-fn compress() {
-    let frame = "*lww#test@0:0!@1:key'value'@2:number=1*rga#text@3:0'T'!*rga#text@6:3,@4'e'@5'x'@6't'*lww#more:a=1;.";
-    let compressed =
-        Frame::compress(Frame::parse(frame).into_iter().collect::<Vec<_>>());
-    let frame = Frame::parse(frame);
-
-    assert!(frame.eq(compressed));
 }

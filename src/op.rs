@@ -71,7 +71,11 @@ pub struct Op {
 }
 
 impl Op {
-    pub fn parse_inplace<'a>(prev: &mut Op, input: &'a str) -> Option<&'a str> {
+    /// Parse a single Op from string `input` into `prev`. If `prev` is not `None` the Op may be
+    /// compressed against `prev`.
+    pub fn parse_inplace<'a>(
+        prev: &mut Option<Op>, input: &'a str,
+    ) -> Option<&'a str> {
         let mut ret = input;
         let mut ty = None;
         let mut event = None;
@@ -79,69 +83,85 @@ impl Op {
         let mut location = None;
 
         {
-            let mut prev_uu = &prev.location;
+            let mut prev_uu = prev.as_ref().map(|p| &p.location);
 
             // type
             ret = ret.trim_left();
             if ret.starts_with('*') {
-                match Uuid::parse(&ret[1..], &prev.ty, prev_uu) {
+                let ctx = prev.as_ref().map(|p| (&p.ty, prev_uu.unwrap()));
+
+                match Uuid::parse(&ret[1..], ctx) {
                     Some((t, rest)) => {
                         ret = rest;
                         ty = Some(t);
-                        prev_uu = ty.as_ref().unwrap();
+                        prev_uu = ty.as_ref();
                     }
                     None => {
-                        return None;
+                        ret = &ret[1..];
+                        ty = prev.as_ref().map(|p| p.ty.clone());
+                        prev_uu = prev.as_ref().map(|p| &p.ty);
                     }
                 }
             } else {
-                prev_uu = &prev.ty;
+                prev_uu = prev.as_ref().map(|p| &p.ty);
             }
 
             // object
             ret = ret.trim_left();
             if ret.starts_with('#') {
-                match Uuid::parse(&ret[1..], &prev.object, prev_uu) {
+                let ctx = prev.as_ref().map(|p| (&p.object, prev_uu.unwrap()));
+
+                match Uuid::parse(&ret[1..], ctx) {
                     Some((obj, rest)) => {
                         ret = rest;
                         object = Some(obj);
-                        prev_uu = object.as_ref().unwrap();
+                        prev_uu = object.as_ref();
                     }
                     None => {
-                        return None;
+                        ret = &ret[1..];
+                        object = prev.as_ref().map(|p| p.object.clone());
+                        prev_uu = prev.as_ref().map(|p| &p.object);
                     }
                 }
             } else {
-                prev_uu = &prev.object;
+                prev_uu = prev.as_ref().map(|p| &p.object);
             }
 
             // event
             ret = ret.trim_left();
             if ret.starts_with('@') {
-                match Uuid::parse(&ret[1..], &prev.event, prev_uu) {
+                let ctx = prev.as_ref().map(|p| (&p.event, prev_uu.unwrap()));
+
+                match Uuid::parse(&ret[1..], ctx) {
                     Some((ev, rest)) => {
                         ret = rest;
                         event = Some(ev);
-                        prev_uu = event.as_ref().unwrap();
+                        prev_uu = event.as_ref();
                     }
                     None => {
-                        return None;
+                        ret = &ret[1..];
+                        event = prev.as_ref().map(|p| p.event.clone());
+                        prev_uu = prev.as_ref().map(|p| &p.event);
                     }
                 }
             } else {
-                prev_uu = &prev.event;
+                prev_uu = prev.as_ref().map(|p| &p.event);
             }
 
             // location
             ret = ret.trim_left();
             if ret.starts_with(':') {
-                match Uuid::parse(&ret[1..], &prev.location, prev_uu) {
+                let ctx =
+                    prev.as_ref().map(|p| (&p.location, prev_uu.unwrap()));
+
+                match Uuid::parse(&ret[1..], ctx) {
                     Some((loc, rest)) => {
                         ret = rest;
                         location = Some(loc);
                     }
                     None => {
-                        return None;
+                        ret = &ret[1..];
+                        location = prev.as_ref().map(|p| p.location.clone());
                     }
                 }
             }
@@ -152,27 +172,49 @@ impl Op {
             && object.is_none()
             && location.is_none();
 
-        if let Some(ty) = ty {
-            prev.ty = ty;
-        }
-        if let Some(event) = event {
-            prev.event = event;
-        }
-        if let Some(object) = object {
-            prev.object = object;
-        }
-        if let Some(location) = location {
-            prev.location = location;
-        }
+        let prev = match prev {
+            &mut Some(ref mut prev) => {
+                if let Some(ty) = ty {
+                    prev.ty = ty;
+                }
+                if let Some(event) = event {
+                    prev.event = event;
+                }
+                if let Some(object) = object {
+                    prev.object = object;
+                }
+                if let Some(location) = location {
+                    prev.location = location;
+                }
+
+                prev
+            }
+            &mut None
+                if ty.is_some() && object.is_some() && event.is_some() =>
+            {
+                *prev = Some(Op {
+                    ty: ty.unwrap(),
+                    object: object.unwrap(),
+                    event: event.unwrap(),
+                    location: location.unwrap_or_else(Uuid::zero),
+                    atoms: Default::default(),
+                    term: Terminator::Header,
+                });
+                prev.as_mut().unwrap()
+            }
+            &mut None => {
+                return None;
+            }
+        };
 
         // atoms
         prev.atoms.clear();
 
         {
-            let mut prev_uu = prev.location.clone();
+            let mut prev_uu = prev.object.clone();
 
             while let Some((atm, rest)) =
-                Atom::parse(ret, &prev.location, &prev_uu)
+                Atom::parse(ret, Some((&prev.object, &prev_uu)))
             {
                 match &atm {
                     &Atom::Uuid(ref uu) => {
@@ -216,30 +258,43 @@ impl Op {
         Some(ret)
     }
 
-    pub fn compress(&self, context: &Op) -> String {
+    /// Serialize Op to text optionally compressing it against `context`.
+    pub fn compress(&self, context: Option<&Op>) -> String {
         let mut ret = String::default();
 
-        if context.ty != self.ty {
+        if context.map(|o| o.ty != self.ty).unwrap_or(true) {
+            let ctx = context.map(|p| (&p.ty, &p.ty));
+
             ret += "*";
-            ret += &self.ty.compress(&context.ty, &context.ty);
+            ret += &self.ty.compress(ctx);
         }
 
-        if context.object != self.object {
+        if context.map(|o| o.object != self.object).unwrap_or(true) {
+            let ctx = context.map(|p| (&p.object, &p.ty));
+
             ret += "#";
-            ret += &self.object.compress(&context.object, &context.ty);
+            ret += &self.object.compress(ctx);
         }
 
-        if context.event != self.event {
+        if context.map(|o| o.event != self.event).unwrap_or(true) {
+            let ctx = context.map(|p| (&p.event, &p.object));
+
             ret += "@";
-            ret += &self.event.compress(&context.event, &context.object);
+            ret += &self.event.compress(ctx);
         }
 
-        if context.location != self.location {
+        if context.map(|o| o.location != self.location).unwrap_or(true) {
+            let ctx = context.map(|p| (&p.location, &p.event));
+
             ret += ":";
-            ret += &self.location.compress(&context.location, &context.event);
+            ret += &self.location.compress(ctx);
         }
 
-        let mut prev = &self.location;
+        if ret.is_empty() {
+            ret = "@".to_string();
+        }
+
+        let mut prev = &self.object;
         for atm in self.atoms.iter() {
             match atm {
                 &Atom::Integer(i) => {
@@ -252,7 +307,8 @@ impl Op {
                     ret += &format!("^{}", i);
                 }
                 &Atom::Uuid(ref i) => {
-                    ret += &i.compress(prev, prev);
+                    ret += ">";
+                    ret += &i.compress(Some((prev, prev)));
                     prev = i;
                 }
             }
@@ -286,5 +342,44 @@ impl fmt::Display for Op {
                 write!(f, "{}", self.term)
             }
         }
+    }
+}
+
+#[test]
+fn compress_roundtrip() {
+    use Frame;
+    let f = Frame::parse(
+        "
+        *set#mice@1YKDXO3201+1YKDXO!
+                 @>mouse$1YKDXO
+                 @(WBF901(WBY>mouse$1YKDWBY
+                 @[67H01[6>mouse$1YKDW6
+                 @(Uh4j01(Uh>mouse$1YKDUh
+                 @(S67V01(S6>mouse$1YKDS6
+                 @(Of(N3:1YKDN3DS01+1YKDN3,
+                 @(MvBV01(IuJ:0>mouse$1YKDIuJ
+                 @(LF:1YKDIuEY01+1YKDIuJ,
+                 :{A601,
+                 @(Io5l01[oA:0>mouse$1YKDIoA
+                 @[l7_01[l>mouse$1YKDIl
+                 @(57(4B:1YKD4B3f01+1YKD4B,
+                 @(0bB401+1YKCsd:0>mouse$1Y",
+    );
+
+    let ops = f.into_iter().collect::<Vec<_>>();
+    for win in ops.windows(2) {
+        let ctx = &win[0];
+        let op = &win[1];
+        let txt = op.compress(Some(ctx));
+        let mut back = Some(ctx.clone());
+
+        Op::parse_inplace(&mut back, &txt[..]);
+
+        eprintln!("ctx: {}", ctx);
+        eprintln!("op : {}", op);
+        eprintln!("txt: {}", txt);
+        eprintln!("rt : {}", back.as_ref().unwrap());
+        eprintln!("");
+        assert_eq!(back.unwrap(), *op);
     }
 }
