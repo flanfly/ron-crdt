@@ -52,7 +52,7 @@ enum ParserState {
 /// always 0 and are provided for backwards compatibility with RFC4122
 /// (variant field).
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Uuid {
+pub enum UUID {
     /// Name UUIDs are often used to encode short string atoms, such as types (e.g. `lww`).
     /// The string is read as a Base64-literal to determine the actual (numeric) UUID component.
     /// Name UUIDs can be *global* (e.g. `lww` = `lww$0`) or *scoped* (e.g. `dbtest$client1`)
@@ -90,7 +90,7 @@ fn format_int(value: u64) -> String {
     result
 }
 
-impl Uuid {
+impl UUID {
     /// Sets the default UUID origin. `s` must not be longer than 10 characters and only consist of
     /// [0-9a-zA-Z~_].
     pub fn set_node_id(val: u64) {
@@ -106,41 +106,41 @@ impl Uuid {
     /// Ignoring leap seconds and other events that mess with the system time all calls to this
     /// functions return unique UUID (duh).
     pub fn now() -> Self {
-        Uuid::Event { origin: Self::node_id(), timestamp: Self::timestamp() }
+        UUID::Event { origin: Self::node_id(), timestamp: Self::timestamp() }
     }
 
     pub fn zero() -> Self {
-        Uuid::Name { name: 0, scope: 0 }
+        UUID::Name { name: 0, scope: 0 }
     }
 
-    /// Return true if and only if this is a name Uuid.
+    /// Return true if and only if this is a name UUID.
     pub fn is_name(&self) -> bool {
         match self {
-            &Uuid::Name { .. } => true,
+            &UUID::Name { .. } => true,
             _ => false,
         }
     }
 
-    /// Return true if and only if this is a number Uuid.
+    /// Return true if and only if this is a number UUID.
     pub fn is_number(&self) -> bool {
         match self {
-            &Uuid::Number { .. } => true,
+            &UUID::Number { .. } => true,
             _ => false,
         }
     }
 
-    /// Return true if and only if this is an event Uuid.
+    /// Return true if and only if this is an event UUID.
     pub fn is_event(&self) -> bool {
         match self {
-            &Uuid::Event { .. } => true,
+            &UUID::Event { .. } => true,
             _ => false,
         }
     }
 
-    /// Return true if and only if this is a derived Uuid.
+    /// Return true if and only if this is a derived UUID.
     pub fn is_derived(&self) -> bool {
         match self {
-            &Uuid::Derived { .. } => true,
+            &UUID::Derived { .. } => true,
             _ => false,
         }
     }
@@ -148,8 +148,8 @@ impl Uuid {
     /// Parse a single UUID and return the remaining string. The `context` argument is the pair
     /// `previous column UUID` / `previous row UUID` or `None`.
     pub fn parse<'a>(
-        input: &'a str, context: Option<(&Uuid, &Uuid)>,
-    ) -> Option<(Uuid, &'a str)> {
+        input: &'a str, context: Option<(&UUID, &UUID)>,
+    ) -> Option<(UUID, &'a str)> {
         let mut state = ParserState::Start;
         let mut prev = context.map(|x| x.0);
 
@@ -218,7 +218,7 @@ impl Uuid {
                             char_index: 0,
                         } => {
                             let lo = partial | (val as u64);
-                            let uu = Uuid::new(value, lo, scheme);
+                            let uu = UUID::new(value, lo, scheme);
                             return Some((uu, &input[off + 1..]));
                         }
 
@@ -340,7 +340,7 @@ impl Uuid {
                             is_full: false,
                             ..
                         } if prev.is_some() => {
-                            let uu = Uuid::new(
+                            let uu = UUID::new(
                                 partial,
                                 prev.unwrap().low(),
                                 prev.unwrap().scheme(),
@@ -348,13 +348,13 @@ impl Uuid {
                             return Some((uu, &input[off..]));
                         }
                         ParserState::NameOrValue { partial, .. } => {
-                            let uu = Uuid::Name { name: partial, scope: 0 };
+                            let uu = UUID::Name { name: partial, scope: 0 };
                             return Some((uu, &input[off..]));
                         }
                         ParserState::Sign { value, is_full: false }
                             if prev.is_some() =>
                         {
-                            let uu = Uuid::new(
+                            let uu = UUID::new(
                                 value,
                                 prev.unwrap().low(),
                                 prev.unwrap().scheme(),
@@ -362,7 +362,7 @@ impl Uuid {
                             return Some((uu, &input[off..]));
                         }
                         ParserState::Sign { value, .. } => {
-                            let uu = Uuid::Name { name: value, scope: 0 };
+                            let uu = UUID::Name { name: value, scope: 0 };
                             return Some((uu, &input[off..]));
                         }
                         ParserState::Origin {
@@ -373,13 +373,13 @@ impl Uuid {
                             ..
                         } if prev.is_some() => {
                             let uu =
-                                Uuid::new(value, prev.unwrap().low(), scheme);
+                                UUID::new(value, prev.unwrap().low(), scheme);
                             return Some((uu, &input[off..]));
                         }
                         ParserState::Origin {
                             value, partial, scheme, ..
                         } => {
-                            let uu = Uuid::new(value, partial, scheme);
+                            let uu = UUID::new(value, partial, scheme);
                             return Some((uu, &input[off..]));
                         }
                     }
@@ -396,7 +396,7 @@ impl Uuid {
             ParserState::NameOrValue { partial, is_full: false, .. }
                 if prev.is_some() =>
             {
-                let uu = Uuid::new(
+                let uu = UUID::new(
                     partial,
                     prev.unwrap().low(),
                     prev.unwrap().scheme(),
@@ -404,11 +404,11 @@ impl Uuid {
                 return Some((uu, &input[0..0]));
             }
             ParserState::NameOrValue { partial, .. } => {
-                let uu = Uuid::Name { name: partial, scope: 0 };
+                let uu = UUID::Name { name: partial, scope: 0 };
                 return Some((uu, &input[0..0]));
             }
             ParserState::Sign { value, is_full: false } if prev.is_some() => {
-                let uu = Uuid::new(
+                let uu = UUID::new(
                     value,
                     prev.unwrap().low(),
                     prev.unwrap().scheme(),
@@ -416,17 +416,17 @@ impl Uuid {
                 return Some((uu, &input[0..0]));
             }
             ParserState::Sign { value, .. } => {
-                let uu = Uuid::Name { name: value, scope: 0 };
+                let uu = UUID::Name { name: value, scope: 0 };
                 return Some((uu, &input[0..0]));
             }
             ParserState::Origin { value, scheme, char_index: 9, .. }
                 if prev.is_some() =>
             {
-                let uu = Uuid::new(value, prev.unwrap().low(), scheme);
+                let uu = UUID::new(value, prev.unwrap().low(), scheme);
                 return Some((uu, &input[0..0]));
             }
             ParserState::Origin { value, partial, scheme, .. } => {
-                let uu = Uuid::new(value, partial, scheme);
+                let uu = UUID::new(value, partial, scheme);
                 return Some((uu, &input[0..0]));
             }
         }
@@ -434,7 +434,7 @@ impl Uuid {
 
     /// Serialize this UUID the text optionally compressing it against (`previous column UUID` /
     /// `previous row UUID`) if context is not `None`.
-    pub fn compress(&self, context: Option<(&Uuid, &Uuid)>) -> String {
+    pub fn compress(&self, context: Option<(&UUID, &UUID)>) -> String {
         if context.is_none()
             || self.high() >> 60 != context.unwrap().0.high() >> 60
         {
@@ -549,37 +549,37 @@ impl Uuid {
 
     fn scheme(&self) -> Scheme {
         match self {
-            Uuid::Name { .. } => Scheme::Name,
-            Uuid::Event { .. } => Scheme::Event,
-            Uuid::Number { .. } => Scheme::Number,
-            Uuid::Derived { .. } => Scheme::Derived,
+            UUID::Name { .. } => Scheme::Name,
+            UUID::Event { .. } => Scheme::Event,
+            UUID::Number { .. } => Scheme::Number,
+            UUID::Derived { .. } => Scheme::Derived,
         }
     }
 
     fn high(&self) -> u64 {
         match self {
-            &Uuid::Name { name, .. } => name,
-            &Uuid::Event { timestamp, .. } => timestamp,
-            &Uuid::Number { value1, .. } => value1,
-            &Uuid::Derived { timestamp, .. } => timestamp,
+            &UUID::Name { name, .. } => name,
+            &UUID::Event { timestamp, .. } => timestamp,
+            &UUID::Number { value1, .. } => value1,
+            &UUID::Derived { timestamp, .. } => timestamp,
         }
     }
 
     fn low(&self) -> u64 {
         match self {
-            &Uuid::Name { scope, .. } => scope,
-            &Uuid::Event { origin, .. } => origin,
-            &Uuid::Number { value2, .. } => value2,
-            &Uuid::Derived { origin, .. } => origin,
+            &UUID::Name { scope, .. } => scope,
+            &UUID::Event { origin, .. } => origin,
+            &UUID::Number { value2, .. } => value2,
+            &UUID::Derived { origin, .. } => origin,
         }
     }
 
     fn new(hi: u64, lo: u64, sch: Scheme) -> Self {
         match sch {
-            Scheme::Name => Uuid::Name { name: hi, scope: lo },
-            Scheme::Event => Uuid::Event { timestamp: hi, origin: lo },
-            Scheme::Derived => Uuid::Derived { timestamp: hi, origin: lo },
-            Scheme::Number => Uuid::Number { value1: hi, value2: lo },
+            Scheme::Name => UUID::Name { name: hi, scope: lo },
+            Scheme::Event => UUID::Event { timestamp: hi, origin: lo },
+            Scheme::Derived => UUID::Derived { timestamp: hi, origin: lo },
+            Scheme::Number => UUID::Number { value1: hi, value2: lo },
         }
     }
 
@@ -616,33 +616,33 @@ impl Uuid {
     }
 }
 
-impl Default for Uuid {
+impl Default for UUID {
     fn default() -> Self {
-        Uuid::zero()
+        UUID::zero()
     }
 }
 
-impl fmt::Display for Uuid {
+impl fmt::Display for UUID {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Uuid::Name { name: 0, scope: 0, .. } => f.write_str("0"),
-            &Uuid::Name { name, scope: 0 } => f.write_str(&format_int(name)),
-            &Uuid::Name { name, scope } => {
+            &UUID::Name { name: 0, scope: 0, .. } => f.write_str("0"),
+            &UUID::Name { name, scope: 0 } => f.write_str(&format_int(name)),
+            &UUID::Name { name, scope } => {
                 f.write_str(&format_int(name))?;
                 f.write_str("$")?;
                 f.write_str(&format_int(scope))
             }
-            &Uuid::Number { value1, value2 } => {
+            &UUID::Number { value1, value2 } => {
                 f.write_str(&format_int(value1))?;
                 f.write_str("%")?;
                 f.write_str(&format_int(value2))
             }
-            &Uuid::Derived { timestamp, origin } => {
+            &UUID::Derived { timestamp, origin } => {
                 f.write_str(&format_int(timestamp))?;
                 f.write_str("-")?;
                 f.write_str(&format_int(origin))
             }
-            &Uuid::Event { timestamp, origin } => {
+            &UUID::Event { timestamp, origin } => {
                 f.write_str(&format_int(timestamp))?;
                 f.write_str("+")?;
                 f.write_str(&format_int(origin))
@@ -653,7 +653,7 @@ impl fmt::Display for Uuid {
 
 #[test]
 fn global_name_uuid() {
-    let uuid = Uuid::Name { name: 824893205576155136, scope: 0 };
+    let uuid = UUID::Name { name: 824893205576155136, scope: 0 };
 
     assert_eq!(uuid.is_name(), true);
     assert_eq!(uuid.is_number(), false);
@@ -665,7 +665,7 @@ fn global_name_uuid() {
 #[test]
 fn scoped_name_uuid() {
     let uuid =
-        Uuid::Name { name: 1023340966896992256, scope: 893360337800134656 };
+        UUID::Name { name: 1023340966896992256, scope: 893360337800134656 };
 
     assert_eq!(uuid.is_name(), true);
     assert_eq!(uuid.is_number(), false);
@@ -676,7 +676,7 @@ fn scoped_name_uuid() {
 
 #[test]
 fn number_uuid() {
-    let uuid = Uuid::Number { value1: 10, value2: 20 };
+    let uuid = UUID::Number { value1: 10, value2: 20 };
 
     assert_eq!(uuid.is_name(), false);
     assert_eq!(uuid.is_number(), true);
@@ -687,7 +687,7 @@ fn number_uuid() {
 
 #[test]
 fn event_uuid() {
-    let uuid = Uuid::Event { timestamp: 0, origin: 0 };
+    let uuid = UUID::Event { timestamp: 0, origin: 0 };
 
     assert_eq!(uuid.is_name(), false);
     assert_eq!(uuid.is_number(), false);
@@ -698,7 +698,7 @@ fn event_uuid() {
 
 #[test]
 fn derived_uuid() {
-    let uuid = Uuid::Derived { timestamp: 0, origin: 0 };
+    let uuid = UUID::Derived { timestamp: 0, origin: 0 };
 
     assert_eq!(uuid.is_name(), false);
     assert_eq!(uuid.is_number(), false);
@@ -709,9 +709,9 @@ fn derived_uuid() {
 
 #[test]
 fn well_known() {
-    let error = Uuid::Name { name: 1152921504606846975, scope: 0 };
-    let never = Uuid::Name { name: 1134907106097364992, scope: 0 };
-    let inc = Uuid::Name { name: 824893205576155136, scope: 0 };
+    let error = UUID::Name { name: 1152921504606846975, scope: 0 };
+    let never = UUID::Name { name: 1134907106097364992, scope: 0 };
+    let inc = UUID::Name { name: 824893205576155136, scope: 0 };
 
     assert_eq!(format!("{}", error), "~~~~~~~~~~");
     assert_eq!(format!("{}", never), "~");
@@ -736,11 +736,11 @@ fn compress() {
         ("}DcR-}L8w", "}IYI-", "}IYI}"), //12
         ("A$B", "A-B", "-"),
     ];
-    let z = Uuid::zero();
+    let z = UUID::zero();
 
     for (ctx, uu, exp) in tris {
-        let ctx = Uuid::parse(ctx, Some((&z, &z))).unwrap().0;
-        let uu = Uuid::parse(uu, Some((&z, &z))).unwrap().0;
+        let ctx = UUID::parse(ctx, Some((&z, &z))).unwrap().0;
+        let uu = UUID::parse(uu, Some((&z, &z))).unwrap().0;
         let comp = uu.compress(Some((&ctx, &ctx)));
 
         assert_eq!(comp, exp);
@@ -765,18 +765,18 @@ fn parse_some() {
         ("(2-[1jHH~", "-[00yAl", "(2-}yAl"),
         ("0123G-abcdb", "(4566(efF", "01234566-abcdefF"),
     ];
-    let z = Uuid::zero();
+    let z = UUID::zero();
 
     for (ctx, uu, exp) in tris {
         eprintln!("{}, {}, {}", ctx, uu, exp);
-        let ctx = Uuid::parse(ctx, Some((&z, &z))).unwrap().0;
+        let ctx = UUID::parse(ctx, Some((&z, &z))).unwrap().0;
         eprintln!("ctx: {:?}", ctx);
         eprintln!("parse ctx: {}", ctx);
-        let uu = Uuid::parse(uu, Some((&ctx, &ctx))).unwrap().0;
+        let uu = UUID::parse(uu, Some((&ctx, &ctx))).unwrap().0;
         eprintln!("uu: {:?}", uu);
         eprintln!("parse uu: {}", uu);
 
-        assert_eq!(Uuid::compress(&uu, Some((&z, &z))), exp);
+        assert_eq!(UUID::compress(&uu, Some((&z, &z))), exp);
     }
 }
 
@@ -816,13 +816,13 @@ fn parse_all() {
         (")A+(", "012345678A+abcd"),     // 11110
         (")A+(B", "012345678A+abcdB"),   // 11111
     ];
-    let z = Uuid::zero();
-    let ctx = Uuid::parse("0123456789-abcdefghi", Some((&z, &z))).unwrap().0;
+    let z = UUID::zero();
+    let ctx = UUID::parse("0123456789-abcdefghi", Some((&z, &z))).unwrap().0;
     for (uu, exp) in pairs {
         if exp.is_empty() {
-            assert!(Uuid::parse(uu, Some((&ctx, &ctx))).is_none());
+            assert!(UUID::parse(uu, Some((&ctx, &ctx))).is_none());
         } else {
-            let uu = Uuid::parse(uu, Some((&ctx, &ctx))).unwrap().0;
+            let uu = UUID::parse(uu, Some((&ctx, &ctx))).unwrap().0;
             assert_eq!(format!("{}", uu), exp);
         }
     }

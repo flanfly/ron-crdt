@@ -40,4 +40,4 @@ pub mod uuid;
 pub use atom::Atom;
 pub use frame::Frame;
 pub use op::{Op, Terminator};
-pub use uuid::Uuid;
+pub use uuid::UUID;

@@ -2,13 +2,13 @@ use std::f64;
 use std::fmt;
 use std::i64;
 use std::str::FromStr;
-use Uuid;
+use UUID;
 
 /// An Atom in RON is an immutable value of one of the types: UUID,
 /// integer, string and float.
 #[derive(Clone)]
 pub enum Atom {
-    Uuid(Uuid),
+    UUID(UUID),
     Integer(i64),
     Float(f64),
     String(String),
@@ -19,7 +19,7 @@ impl PartialEq for Atom {
         match (self, other) {
             (&Atom::String(ref a), &Atom::String(ref b)) => a == b,
             (&Atom::Integer(ref a), &Atom::Integer(ref b)) => a == b,
-            (&Atom::Uuid(ref a), &Atom::Uuid(ref b)) => a == b,
+            (&Atom::UUID(ref a), &Atom::UUID(ref b)) => a == b,
             (&Atom::Float(ref a), &Atom::Float(ref b)) => a - b < 0.0001,
             _ => false,
         }
@@ -43,16 +43,16 @@ impl fmt::Display for Atom {
             }
             &Atom::Integer(ref s) => write!(f, "={}", s),
             &Atom::Float(ref s) => write!(f, "^{}", s),
-            &Atom::Uuid(ref s) => write!(f, ">{}", s.to_string()),
+            &Atom::UUID(ref s) => write!(f, ">{}", s.to_string()),
         }
     }
 }
 
 impl Atom {
-    /// Return true if and only if this is an Uuid atom.
+    /// Return true if and only if this is an UUID atom.
     pub fn is_uuid(&self) -> bool {
         match self {
-            &Atom::Uuid(_) => true,
+            &Atom::UUID(_) => true,
             _ => false,
         }
     }
@@ -84,7 +84,7 @@ impl Atom {
     /// Parse a single atom, returning the Atom and the remaining string. If `context` is not
     /// `None` UUID Atoms may be compressed against (`previous column UUID` / `previous row UUID`).
     pub fn parse<'a>(
-        input: &'a str, context: Option<(&Uuid, &Uuid)>,
+        input: &'a str, context: Option<(&UUID, &UUID)>,
     ) -> Option<(Self, &'a str)> {
         let input = input.trim_start();
         match input.chars().next() {
@@ -92,8 +92,8 @@ impl Atom {
             Some('=') => Self::parse_integer(&input[1..]),
             Some('^') => Self::parse_float(&input[1..]),
             Some('>') => {
-                Uuid::parse(&input[1..], context)
-                    .map(|(uu, cdr)| (Atom::Uuid(uu), cdr))
+                UUID::parse(&input[1..], context)
+                    .map(|(uu, cdr)| (Atom::UUID(uu), cdr))
             }
             _ => None,
         }
@@ -160,7 +160,7 @@ impl Atom {
 
 #[test]
 fn atom_uuid() {
-    let atom = Atom::Uuid(Uuid::Name { name: 0, scope: 0 });
+    let atom = Atom::UUID(UUID::Name { name: 0, scope: 0 });
     assert_eq!(atom.is_uuid(), true);
     assert_eq!(atom.is_integer(), false);
     assert_eq!(atom.is_float(), false);

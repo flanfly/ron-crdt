@@ -2,7 +2,7 @@ use std::fmt;
 
 use smallvec::SmallVec;
 use Atom;
-use Uuid;
+use UUID;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Terminator {
@@ -62,10 +62,10 @@ impl Terminator {
 /// atoms, and a terminator.
 #[derive(Clone, PartialEq)]
 pub struct Op {
-    pub ty: Uuid,
-    pub object: Uuid,
-    pub event: Uuid,
-    pub location: Uuid,
+    pub ty: UUID,
+    pub object: UUID,
+    pub event: UUID,
+    pub location: UUID,
     pub atoms: SmallVec<[Atom; 3]>,
     pub term: Terminator,
 }
@@ -90,7 +90,7 @@ impl Op {
             if ret.starts_with('*') {
                 let ctx = prev.as_ref().map(|p| (&p.ty, prev_uu.unwrap()));
 
-                match Uuid::parse(&ret[1..], ctx) {
+                match UUID::parse(&ret[1..], ctx) {
                     Some((t, rest)) => {
                         ret = rest;
                         ty = Some(t);
@@ -111,7 +111,7 @@ impl Op {
             if ret.starts_with('#') {
                 let ctx = prev.as_ref().map(|p| (&p.object, prev_uu.unwrap()));
 
-                match Uuid::parse(&ret[1..], ctx) {
+                match UUID::parse(&ret[1..], ctx) {
                     Some((obj, rest)) => {
                         ret = rest;
                         object = Some(obj);
@@ -132,7 +132,7 @@ impl Op {
             if ret.starts_with('@') {
                 let ctx = prev.as_ref().map(|p| (&p.event, prev_uu.unwrap()));
 
-                match Uuid::parse(&ret[1..], ctx) {
+                match UUID::parse(&ret[1..], ctx) {
                     Some((ev, rest)) => {
                         ret = rest;
                         event = Some(ev);
@@ -154,7 +154,7 @@ impl Op {
                 let ctx =
                     prev.as_ref().map(|p| (&p.location, prev_uu.unwrap()));
 
-                match Uuid::parse(&ret[1..], ctx) {
+                match UUID::parse(&ret[1..], ctx) {
                     Some((loc, rest)) => {
                         ret = rest;
                         location = Some(loc);
@@ -196,7 +196,7 @@ impl Op {
                     ty: ty.unwrap(),
                     object: object.unwrap(),
                     event: event.unwrap(),
-                    location: location.unwrap_or_else(Uuid::zero),
+                    location: location.unwrap_or_else(UUID::zero),
                     atoms: Default::default(),
                     term: Terminator::Header,
                 });
@@ -217,7 +217,7 @@ impl Op {
                 Atom::parse(ret, Some((&prev.object, &prev_uu)))
             {
                 match &atm {
-                    &Atom::Uuid(ref uu) => {
+                    &Atom::UUID(ref uu) => {
                         prev_uu = uu.clone();
                     }
                     _ => {}
@@ -306,7 +306,7 @@ impl Op {
                 &Atom::Float(i) => {
                     ret += &format!("^{}", i);
                 }
-                &Atom::Uuid(ref i) => {
+                &Atom::UUID(ref i) => {
                     ret += ">";
                     ret += &i.compress(Some((prev, prev)));
                     prev = i;
