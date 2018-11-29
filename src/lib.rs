@@ -34,10 +34,12 @@ extern crate smallvec;
 
 pub mod atom;
 pub mod frame;
+pub mod heap;
 pub mod op;
 pub mod uuid;
 
 pub use atom::Atom;
 pub use frame::Frame;
+pub use heap::{FrameOrd, Heap};
 pub use op::{Op, Terminator};
 pub use uuid::UUID;
