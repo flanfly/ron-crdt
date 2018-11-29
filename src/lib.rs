@@ -29,15 +29,15 @@
 //! included in an operation (for example, a handshake query does not
 //! have a timestamp).
 
-extern crate smallvec;
 extern crate chrono;
+extern crate smallvec;
 
-pub mod uuid;
-pub mod op;
 pub mod atom;
 pub mod frame;
+pub mod op;
+pub mod uuid;
 
-pub use uuid::Uuid;
 pub use atom::Atom;
-pub use op::{Op, Terminator};
 pub use frame::Frame;
+pub use op::{Op, Terminator};
+pub use uuid::Uuid;

@@ -90,12 +90,13 @@ impl Op {
                         ty = Some(t);
                         prev_uu = ty.as_ref().unwrap();
                     }
-                    None => { return None; }
+                    None => {
+                        return None;
+                    }
                 }
             } else {
                 prev_uu = &prev.ty;
             }
-
 
             // object
             ret = ret.trim_left();
@@ -106,7 +107,9 @@ impl Op {
                         object = Some(obj);
                         prev_uu = object.as_ref().unwrap();
                     }
-                    None => { return None; }
+                    None => {
+                        return None;
+                    }
                 }
             } else {
                 prev_uu = &prev.object;
@@ -121,7 +124,9 @@ impl Op {
                         event = Some(ev);
                         prev_uu = event.as_ref().unwrap();
                     }
-                    None => { return None; }
+                    None => {
+                        return None;
+                    }
                 }
             } else {
                 prev_uu = &prev.event;
@@ -135,18 +140,30 @@ impl Op {
                         ret = rest;
                         location = Some(loc);
                     }
-                    None => { return None; }
+                    None => {
+                        return None;
+                    }
                 }
             }
         }
 
-        let no_spec = ty.is_none() && event.is_none()
-            && object.is_none() && location.is_none();
+        let no_spec = ty.is_none()
+            && event.is_none()
+            && object.is_none()
+            && location.is_none();
 
-        if let Some(ty) = ty { prev.ty = ty; }
-        if let Some(event) = event { prev.event = event; }
-        if let Some(object) = object { prev.object = object; }
-        if let Some(location) = location { prev.location = location; }
+        if let Some(ty) = ty {
+            prev.ty = ty;
+        }
+        if let Some(event) = event {
+            prev.event = event;
+        }
+        if let Some(object) = object {
+            prev.object = object;
+        }
+        if let Some(location) = location {
+            prev.location = location;
+        }
 
         // atoms
         prev.atoms.clear();
@@ -154,7 +171,9 @@ impl Op {
         {
             let mut prev_uu = prev.location.clone();
 
-            while let Some((atm, rest)) = Atom::parse(ret, &prev.location, &prev_uu) {
+            while let Some((atm, rest)) =
+                Atom::parse(ret, &prev.location, &prev_uu)
+            {
                 match &atm {
                     &Atom::Uuid(ref uu) => {
                         prev_uu = uu.clone();
@@ -189,7 +208,9 @@ impl Op {
             _ if !no_spec || !prev.atoms.is_empty() => {
                 prev.term = Terminator::Reduced;
             }
-            _ => { return None; }
+            _ => {
+                return None;
+            }
         }
 
         Some(ret)
@@ -221,9 +242,15 @@ impl Op {
         let mut prev = &self.location;
         for atm in self.atoms.iter() {
             match atm {
-                &Atom::Integer(i) => { ret += &format!("={}", i); }
-                &Atom::String(ref i) => { ret += &format!("'{}'", i); }
-                &Atom::Float(i) => { ret += &format!("^{}", i); }
+                &Atom::Integer(i) => {
+                    ret += &format!("={}", i);
+                }
+                &Atom::String(ref i) => {
+                    ret += &format!("'{}'", i);
+                }
+                &Atom::Float(i) => {
+                    ret += &format!("^{}", i);
+                }
                 &Atom::Uuid(ref i) => {
                     ret += &i.compress(prev, prev);
                     prev = i;
@@ -242,8 +269,11 @@ impl fmt::Debug for Op {
 
 impl fmt::Display for Op {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "*{}#{}@{}:{}", self.ty, self.object, self.event,
-               self.location)?;
+        write!(
+            f,
+            "*{}#{}@{}:{}",
+            self.ty, self.object, self.event, self.location
+        )?;
 
         match self.atoms.len() {
             0 => write!(f, "{}", self.term),
@@ -258,4 +288,3 @@ impl fmt::Display for Op {
         }
     }
 }
-

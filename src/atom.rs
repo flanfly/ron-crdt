@@ -1,6 +1,6 @@
+use std::f64;
 use std::fmt;
 use std::i64;
-use std::f64;
 use std::str::FromStr;
 use Uuid;
 
@@ -81,19 +81,26 @@ impl Atom {
         }
     }
 
-    pub fn parse<'a>(input: &'a str, prev_col: &Uuid, prev_row: &Uuid) -> Option<(Self, &'a str)> {
+    pub fn parse<'a>(
+        input: &'a str, prev_col: &Uuid, prev_row: &Uuid,
+    ) -> Option<(Self, &'a str)> {
         match input.trim_end().chars().next() {
             Some('\'') => Self::parse_string(&input[1..]),
             Some('=') => Self::parse_integer(&input[1..]),
             Some('^') => Self::parse_float(&input[1..]),
-            Some('>') => Uuid::parse(&input[1..], prev_col, prev_row)
-                .map(|(uu,cdr)| (Atom::Uuid(uu), cdr)),
+            Some('>') => {
+                Uuid::parse(&input[1..], prev_col, prev_row)
+                    .map(|(uu, cdr)| (Atom::Uuid(uu), cdr))
+            }
             _ => None,
         }
     }
 
     fn parse_integer<'a>(input: &'a str) -> Option<(Self, &'a str)> {
-        let p = input.chars().position(|c| !c.is_ascii_digit()).unwrap_or(input.len());
+        let p = input
+            .chars()
+            .position(|c| !c.is_ascii_digit())
+            .unwrap_or(input.len());
         if p == 0 {
             None
         } else {
@@ -103,9 +110,12 @@ impl Atom {
     }
 
     fn parse_float<'a>(input: &'a str) -> Option<(Self, &'a str)> {
-        let p = input.chars().position(|c| {
-            !c.is_ascii_digit() && c != 'e' && c != 'E' && c != '.'
-        }).unwrap_or(input.len());
+        let p = input
+            .chars()
+            .position(|c| {
+                !c.is_ascii_digit() && c != 'e' && c != 'E' && c != '.'
+            })
+            .unwrap_or(input.len());
         if p == 0 {
             None
         } else {
@@ -122,7 +132,7 @@ impl Atom {
                     let (a, b) = input.split_at(off);
                     return Some((Atom::String(a.to_string()), &b[1..]));
                 }
-                ('\'', false) => { return None }
+                ('\'', false) => return None,
                 ('\'', true) => false,
 
                 ('\\', false) => true,

@@ -1,15 +1,20 @@
-use std::fmt;
-use std::time::SystemTime;
 use std::cmp::Ordering;
+use std::fmt;
 use std::sync::atomic::{self, AtomicUsize, ATOMIC_USIZE_INIT};
+use std::time::SystemTime;
 
-use chrono::{Utc, DateTime, Datelike, Timelike};
+use chrono::{DateTime, Datelike, Timelike, Utc};
 
 static UUID_NODE_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 static UUID_SEQUENCE: AtomicUsize = ATOMIC_USIZE_INIT;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum Scheme { Name, Event, Number, Derived, }
+enum Scheme {
+    Name,
+    Event,
+    Number,
+    Derived,
+}
 
 impl fmt::Display for Scheme {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -25,21 +30,9 @@ impl fmt::Display for Scheme {
 #[derive(Debug)]
 enum ParserState {
     Start,
-    NameOrValue{
-        char_index: usize,
-        partial: u64,
-        is_full: bool,
-    },
-    Sign{
-        value: u64,
-        is_full: bool,
-    },
-    Origin{
-        value: u64,
-        partial: u64,
-        char_index: usize,
-        scheme: Scheme,
-    },
+    NameOrValue { char_index: usize, partial: u64, is_full: bool },
+    Sign { value: u64, is_full: bool },
+    Origin { value: u64, partial: u64, char_index: usize, scheme: Scheme },
 }
 
 /// UUIDs are used by RON to identify types, objects, events, etc.
@@ -99,7 +92,7 @@ fn format_int(value: u64) -> String {
 }
 
 impl Uuid {
-     /// Sets the default UUID origin. `s` must not be longer than 10 characters and only consist of
+    /// Sets the default UUID origin. `s` must not be longer than 10 characters and only consist of
     /// [0-9a-zA-Z~_].
     pub fn set_node_id(val: u64) {
         UUID_NODE_ID.store(val as usize, atomic::Ordering::Relaxed);
@@ -114,17 +107,14 @@ impl Uuid {
     /// Ignoring leap seconds and other events that mess with the system time all calls to this
     /// functions return unique UUID (duh).
     pub fn now() -> Self {
-        Uuid::Event{
-            origin: Self::node_id(),
-            timestamp:  Self::timestamp(),
-        }
+        Uuid::Event { origin: Self::node_id(), timestamp: Self::timestamp() }
     }
 
     pub fn zero() -> Self {
-        Uuid::Name{ name: 0, scope: 0 }
+        Uuid::Name { name: 0, scope: 0 }
     }
 
-   /// Return true if and only if this is a name Uuid.
+    /// Return true if and only if this is a name Uuid.
     pub fn is_name(&self) -> bool {
         match self {
             &Uuid::Name { .. } => true,
@@ -156,9 +146,9 @@ impl Uuid {
         }
     }
 
-    pub fn parse<'a>(input: &'a str, prev_col: &Uuid, prev_row: &Uuid)
-        -> Option<(Uuid, &'a str)> {
-
+    pub fn parse<'a>(
+        input: &'a str, prev_col: &Uuid, prev_row: &Uuid,
+    ) -> Option<(Uuid, &'a str)> {
         let mut state = ParserState::Start;
         let mut prev = prev_col;
 
@@ -168,100 +158,126 @@ impl Uuid {
                 // base64 char
                 b'0'...b'9' | b'A'...b'Z' | b'_' | b'a'...b'z' | b'~' => {
                     let val = match ch as u8 {
-                        ch@b'0'...b'9' => ch - b'0',
-                        ch@b'A'...b'Z' => ch - b'A' + 10,
+                        ch @ b'0'...b'9' => ch - b'0',
+                        ch @ b'A'...b'Z' => ch - b'A' + 10,
                         b'_' => 36,
-                        ch@b'a'...b'z' => ch - b'a' + 37,
+                        ch @ b'a'...b'z' => ch - b'a' + 37,
                         b'~' => 63,
                         _ => unreachable!(),
                     };
 
                     match state {
                         ParserState::Start => {
-                            state = ParserState::NameOrValue{
+                            state = ParserState::NameOrValue {
                                 char_index: 8,
                                 partial: (val as u64) << (9 * 6),
                                 is_full: true,
                             };
                         }
-                        ParserState::NameOrValue{ partial, char_index, is_full }
-                        if char_index > 0 => {
-                            state = ParserState::NameOrValue{
+                        ParserState::NameOrValue {
+                            partial,
+                            char_index,
+                            is_full,
+                        } if char_index > 0 => {
+                            state = ParserState::NameOrValue {
                                 char_index: char_index - 1,
-                                partial: partial | ((val as u64) << (char_index * 6)),
+                                partial: partial
+                                    | ((val as u64) << (char_index * 6)),
                                 is_full: is_full,
                             };
                         }
-                        ParserState::NameOrValue{ partial, char_index: 0, is_full } => {
-                            state = ParserState::Sign{
+                        ParserState::NameOrValue {
+                            partial,
+                            char_index: 0,
+                            is_full,
+                        } => {
+                            state = ParserState::Sign {
                                 value: partial | (val as u64),
                                 is_full: is_full,
                             };
                         }
-                        ParserState::Origin{ value, scheme, partial,
-                                             char_index } if char_index > 0 => {
-                            state = ParserState::Origin{
+                        ParserState::Origin {
+                            value,
+                            scheme,
+                            partial,
+                            char_index,
+                        } if char_index > 0 => {
+                            state = ParserState::Origin {
                                 value: value,
                                 scheme: scheme,
                                 char_index: char_index - 1,
-                                partial: partial | ((val as u64) << (char_index * 6)),
+                                partial: partial
+                                    | ((val as u64) << (char_index * 6)),
                             };
                         }
-                        ParserState::Origin{ value, scheme, partial,
-                                             char_index: 0 } => {
+                        ParserState::Origin {
+                            value,
+                            scheme,
+                            partial,
+                            char_index: 0,
+                        } => {
                             let lo = partial | (val as u64);
                             let uu = Uuid::new(value, lo, scheme);
                             return Some((uu, &input[off..]));
                         }
 
-                        _ => { return None; }
+                        _ => {
+                            return None;
+                        }
                     }
                 }
                 // backref to column
                 b'(' | b'[' | b'{' | b'}' | b']' | b')' => {
-                    let (mask,ch) = match ch as u8 {
-                        b'(' => (0xffffff000000000,5),
-                        b'[' => (0xfffffffc0000000,6),
-                        b'{' => (0xfffffffff000000,7),
-                        b'}' => (0xffffffffffc0000,8),
-                        b']' => (0xffffffffffff000,9),
-                        b')' => (0xfffffffffffffc0,10),
+                    let (mask, ch) = match ch as u8 {
+                        b'(' => (0xffffff000000000, 5),
+                        b'[' => (0xfffffffc0000000, 6),
+                        b'{' => (0xfffffffff000000, 7),
+                        b'}' => (0xffffffffffc0000, 8),
+                        b']' => (0xffffffffffff000, 9),
+                        b')' => (0xfffffffffffffc0, 10),
                         _ => unreachable!(),
                     };
 
                     match state {
                         ParserState::Start => {
-                            state = ParserState::NameOrValue{
+                            state = ParserState::NameOrValue {
                                 partial: prev.high() & mask,
                                 char_index: 10 - ch,
                                 is_full: false,
                             };
                         }
-                        ParserState::NameOrValue{ partial,.. } => {
-                            state = ParserState::Origin{
+                        ParserState::NameOrValue { partial, .. } => {
+                            state = ParserState::Origin {
                                 scheme: prev.scheme(),
                                 value: partial,
                                 partial: prev.low() & mask,
                                 char_index: 10 - ch,
                             };
                         }
-                        ParserState::Sign{ value,.. } => {
-                            state = ParserState::Origin{
+                        ParserState::Sign { value, .. } => {
+                            state = ParserState::Origin {
                                 scheme: prev.scheme(),
                                 value: value,
                                 partial: prev.low() & mask,
                                 char_index: 10 - ch,
                             };
                         }
-                        ParserState::Origin{ value, scheme, char_index: 9,.. } => {
-                            state = ParserState::Origin{
+                        ParserState::Origin {
+                            value,
+                            scheme,
+                            char_index: 9,
+                            ..
+                        } => {
+                            state = ParserState::Origin {
                                 scheme: scheme,
                                 value: value,
                                 partial: prev.low() & mask,
                                 char_index: 10 - ch,
                             };
                         }
-                        _ => { return None; }
+                        _ => {
+                            return None;
+                        }
                     }
                 }
 
@@ -282,30 +298,32 @@ impl Uuid {
 
                     match state {
                         ParserState::Start => {
-                            state = ParserState::Origin{
+                            state = ParserState::Origin {
                                 scheme: sch,
                                 value: prev.high(),
                                 partial: 0,
                                 char_index: 9,
                             };
                         }
-                        ParserState::NameOrValue{ partial,.. } => {
-                            state = ParserState::Origin{
+                        ParserState::NameOrValue { partial, .. } => {
+                            state = ParserState::Origin {
                                 scheme: sch,
                                 value: partial,
                                 partial: 0,
                                 char_index: 9,
                             };
                         }
-                        ParserState::Sign{ value,.. } => {
-                            state = ParserState::Origin{
+                        ParserState::Sign { value, .. } => {
+                            state = ParserState::Origin {
                                 scheme: sch,
                                 value: value,
                                 partial: 0,
                                 char_index: 9,
                             };
                         }
-                        _ => { return None; }
+                        _ => {
+                            return None;
+                        }
                     }
                 }
 
@@ -316,23 +334,31 @@ impl Uuid {
                             let uu = Uuid::zero();
                             return Some((uu, &input[off..]));
                         }
-                        ParserState::NameOrValue{ partial, is_full: false,.. } => {
-                            let uu = Uuid::new(partial, prev.low(), prev.scheme());
+                        ParserState::NameOrValue {
+                            partial,
+                            is_full: false,
+                            ..
+                        } => {
+                            let uu =
+                                Uuid::new(partial, prev.low(), prev.scheme());
                             return Some((uu, &input[off..]));
                         }
-                        ParserState::NameOrValue{ partial,.. } => {
-                            let uu = Uuid::Name{ name: partial, scope: 0 };
+                        ParserState::NameOrValue { partial, .. } => {
+                            let uu = Uuid::Name { name: partial, scope: 0 };
                             return Some((uu, &input[off..]));
                         }
-                        ParserState::Sign{ value, is_full: false } => {
-                            let uu = Uuid::new(value, prev.low(), prev.scheme());
+                        ParserState::Sign { value, is_full: false } => {
+                            let uu =
+                                Uuid::new(value, prev.low(), prev.scheme());
                             return Some((uu, &input[off..]));
                         }
-                        ParserState::Sign{ value,.. } => {
-                            let uu = Uuid::Name{ name: value, scope: 0 };
+                        ParserState::Sign { value, .. } => {
+                            let uu = Uuid::Name { name: value, scope: 0 };
                             return Some((uu, &input[off..]));
                         }
-                        ParserState::Origin{ value, partial, scheme,.. } => {
+                        ParserState::Origin {
+                            value, partial, scheme, ..
+                        } => {
                             let uu = Uuid::new(value, partial, scheme);
                             return Some((uu, &input[off..]));
                         }
@@ -348,27 +374,27 @@ impl Uuid {
                 let uu = Uuid::zero();
                 return Some((uu, &input[0..0]));
             }
-            ParserState::NameOrValue{ partial, is_full: false,.. } => {
+            ParserState::NameOrValue { partial, is_full: false, .. } => {
                 let uu = Uuid::new(partial, prev.low(), prev.scheme());
                 return Some((uu, &input[0..0]));
             }
-            ParserState::NameOrValue{ partial,.. } => {
-                let uu = Uuid::Name{ name: partial, scope: 0 };
+            ParserState::NameOrValue { partial, .. } => {
+                let uu = Uuid::Name { name: partial, scope: 0 };
                 return Some((uu, &input[0..0]));
             }
-            ParserState::Sign{ value, is_full: false } => {
+            ParserState::Sign { value, is_full: false } => {
                 let uu = Uuid::new(value, prev.low(), prev.scheme());
                 return Some((uu, &input[0..0]));
             }
-            ParserState::Sign{ value,.. } => {
-                let uu = Uuid::Name{ name: value, scope: 0 };
+            ParserState::Sign { value, .. } => {
+                let uu = Uuid::Name { name: value, scope: 0 };
                 return Some((uu, &input[0..0]));
             }
-            ParserState::Origin{ value, scheme, char_index: 9,.. } => {
+            ParserState::Origin { value, scheme, char_index: 9, .. } => {
                 let uu = Uuid::new(value, prev.low(), scheme);
                 return Some((uu, &input[0..0]));
             }
-            ParserState::Origin{ value, partial, scheme,.. } => {
+            ParserState::Origin { value, partial, scheme, .. } => {
                 let uu = Uuid::new(value, partial, scheme);
                 return Some((uu, &input[0..0]));
             }
@@ -378,7 +404,7 @@ impl Uuid {
     pub fn compress(&self, prev_col: &Uuid, _prev_row: &Uuid) -> String {
         if self.high() >> 60 != prev_col.high() >> 60 {
             // don't compress UUIDs with different varities
-            return format!("{}", self)
+            return format!("{}", self);
         }
 
         let ret = Self::compress_int64(self.high(), prev_col.high());
@@ -386,12 +412,23 @@ impl Uuid {
             ret
         } else {
             let origin = Self::compress_int64(self.low(), prev_col.low());
-            let orig_is_compr = origin.bytes().next().map(|c| {
-                c == b'{' || c == b'[' || c == b'(' ||
-                c == b'}' || c == b']' || c == b')'
-            }).unwrap_or(false);
+            let orig_is_compr = origin
+                .bytes()
+                .next()
+                .map(|c| {
+                    c == b'{'
+                        || c == b'['
+                        || c == b'('
+                        || c == b'}'
+                        || c == b']'
+                        || c == b')'
+                })
+                .unwrap_or(false);
 
-            if self.scheme() == prev_col.scheme() && orig_is_compr && !ret.is_empty() {
+            if self.scheme() == prev_col.scheme()
+                && orig_is_compr
+                && !ret.is_empty()
+            {
                 ret + &origin
             } else {
                 ret + &format!("{}{}", self.scheme(), origin)
@@ -400,12 +437,15 @@ impl Uuid {
     }
 
     fn compress_int64(value: u64, ctx: u64) -> String {
-        if value == ctx { return "".to_string(); }
+        if value == ctx {
+            return "".to_string();
+        }
 
         let value = Self::int64_to_str(value, false);
         let ctx = Self::int64_to_str(ctx, false);
         let zip = value.bytes().zip(ctx.bytes()).collect::<Vec<_>>();
-        let prfx_len = zip.iter().position(|(a,b)| a != b).unwrap_or(zip.len());
+        let prfx_len =
+            zip.iter().position(|(a, b)| a != b).unwrap_or(zip.len());
 
         let ret = match prfx_len {
             4 => format!("({}", &value[4..]),
@@ -418,7 +458,11 @@ impl Uuid {
         };
 
         let ret = ret.trim_end_matches('0').to_string();
-        if ret.is_empty() { "0".to_string() } else { ret }
+        if ret.is_empty() {
+            "0".to_string()
+        } else {
+            ret
+        }
     }
 
     fn int64_to_str(int: u64, truncate: bool) -> String {
@@ -427,18 +471,32 @@ impl Uuid {
         for idx in 0..10 {
             let idx = (9 - idx) * 6;
             match ((int >> idx) & 63) as u8 {
-                ch@0...9 => { ret += &format!("{}", (b'0' + ch) as char); }
-                ch@10...35 => { ret += &format!("{}", (b'A' + ch - 10) as char); }
-                36 => { ret.push('_'); }
-                ch@37...62 => { ret += &format!("{}", (b'a' + ch - 37) as char); }
-                63 => { ret.push('~'); }
+                ch @ 0...9 => {
+                    ret += &format!("{}", (b'0' + ch) as char);
+                }
+                ch @ 10...35 => {
+                    ret += &format!("{}", (b'A' + ch - 10) as char);
+                }
+                36 => {
+                    ret.push('_');
+                }
+                ch @ 37...62 => {
+                    ret += &format!("{}", (b'a' + ch - 37) as char);
+                }
+                63 => {
+                    ret.push('~');
+                }
                 _ => unreachable!(),
             }
         }
 
         if truncate {
             let ret = ret.trim_end_matches('0').to_string();
-            if ret.is_empty() { "0".to_string() } else { ret }
+            if ret.is_empty() {
+                "0".to_string()
+            } else {
+                ret
+            }
         } else {
             ret
         }
@@ -446,46 +504,47 @@ impl Uuid {
 
     fn scheme(&self) -> Scheme {
         match self {
-            Uuid::Name{ .. } => Scheme::Name,
-            Uuid::Event{ .. } => Scheme::Event,
-            Uuid::Number{ .. } => Scheme::Number,
-            Uuid::Derived{ .. } => Scheme::Derived,
+            Uuid::Name { .. } => Scheme::Name,
+            Uuid::Event { .. } => Scheme::Event,
+            Uuid::Number { .. } => Scheme::Number,
+            Uuid::Derived { .. } => Scheme::Derived,
         }
     }
 
     fn high(&self) -> u64 {
         match self {
-            &Uuid::Name{ name,.. } => name,
-            &Uuid::Event{ timestamp,.. } => timestamp,
-            &Uuid::Number{ value1,.. } => value1,
-            &Uuid::Derived{ timestamp,.. } => timestamp,
+            &Uuid::Name { name, .. } => name,
+            &Uuid::Event { timestamp, .. } => timestamp,
+            &Uuid::Number { value1, .. } => value1,
+            &Uuid::Derived { timestamp, .. } => timestamp,
         }
     }
 
     fn low(&self) -> u64 {
         match self {
-            &Uuid::Name{ scope,.. } => scope,
-            &Uuid::Event{ origin,.. } => origin,
-            &Uuid::Number{ value2,.. } => value2,
-            &Uuid::Derived{ origin,.. } => origin,
+            &Uuid::Name { scope, .. } => scope,
+            &Uuid::Event { origin, .. } => origin,
+            &Uuid::Number { value2, .. } => value2,
+            &Uuid::Derived { origin, .. } => origin,
         }
     }
 
     fn new(hi: u64, lo: u64, sch: Scheme) -> Self {
         match sch {
-            Scheme::Name => Uuid::Name{ name: hi, scope: lo },
-            Scheme::Event => Uuid::Event{ timestamp: hi, origin: lo },
-            Scheme::Derived => Uuid::Derived{ timestamp: hi, origin: lo },
-            Scheme::Number => Uuid::Number{ value1: hi, value2: lo },
+            Scheme::Name => Uuid::Name { name: hi, scope: lo },
+            Scheme::Event => Uuid::Event { timestamp: hi, origin: lo },
+            Scheme::Derived => Uuid::Derived { timestamp: hi, origin: lo },
+            Scheme::Number => Uuid::Number { value1: hi, value2: lo },
         }
     }
 
     fn timestamp() -> u64 {
-        use std::time::Duration;
         use std::thread::sleep;
+        use std::time::Duration;
 
         let now = SystemTime::now();
-        let seq = (UUID_SEQUENCE.fetch_add(1, atomic::Ordering::SeqCst) & 0b111111_111111) as u64;
+        let seq = (UUID_SEQUENCE.fetch_add(1, atomic::Ordering::SeqCst)
+            & 0b111111_111111) as u64;
 
         // we wait for the clock to advance after sequence number overflows to avoid creating
         // duplicated uuids. This can happen if we try to generate more than 4k instances in
@@ -497,46 +556,48 @@ impl Uuid {
         }
 
         let dt: DateTime<Utc> = now.into();
-        let months = (2010 + dt.year() as u64 * 12 + dt.month0() as u64) & 0b111111_111111;;
+        let months = (2010 + dt.year() as u64 * 12 + dt.month0() as u64)
+            & 0b111111_111111;;
         let ts = (months << (8 * 6))
-               | ((dt.day0() as u64   & 0b111111) << (7 * 6))
-               | ((dt.hour() as u64   & 0b111111) << (6 * 6))
-               | ((dt.minute() as u64 & 0b111111) << (5 * 6))
-               | ((dt.second() as u64 & 0b111111) << (4 * 6))
-               | (((dt.nanosecond() as u64 / 1_000_000) & 0b111111_111111) << (2 * 6))
-               | seq;
+            | ((dt.day0() as u64 & 0b111111) << (7 * 6))
+            | ((dt.hour() as u64 & 0b111111) << (6 * 6))
+            | ((dt.minute() as u64 & 0b111111) << (5 * 6))
+            | ((dt.second() as u64 & 0b111111) << (4 * 6))
+            | (((dt.nanosecond() as u64 / 1_000_000) & 0b111111_111111)
+                << (2 * 6))
+            | seq;
 
         ts
     }
-
 }
 
 impl Default for Uuid {
-    fn default() -> Self { Uuid::zero() }
+    fn default() -> Self {
+        Uuid::zero()
+    }
 }
 
 impl fmt::Display for Uuid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Uuid::Name{ name: 0, scope: 0,.. } => f.write_str("0"),
-            &Uuid::Name{ name, scope: 0 } =>
-                f.write_str(&format_int(name)),
-            &Uuid::Name{ name, scope } => {
+            &Uuid::Name { name: 0, scope: 0, .. } => f.write_str("0"),
+            &Uuid::Name { name, scope: 0 } => f.write_str(&format_int(name)),
+            &Uuid::Name { name, scope } => {
                 f.write_str(&format_int(name))?;
                 f.write_str("$")?;
                 f.write_str(&format_int(scope))
             }
-            &Uuid::Number{ value1, value2 } => {
+            &Uuid::Number { value1, value2 } => {
                 f.write_str(&format_int(value1))?;
                 f.write_str("%")?;
                 f.write_str(&format_int(value2))
             }
-            &Uuid::Derived{ timestamp, origin } => {
+            &Uuid::Derived { timestamp, origin } => {
                 f.write_str(&format_int(timestamp))?;
                 f.write_str("-")?;
                 f.write_str(&format_int(origin))
             }
-            &Uuid::Event{ timestamp, origin } => {
+            &Uuid::Event { timestamp, origin } => {
                 f.write_str(&format_int(timestamp))?;
                 f.write_str("+")?;
                 f.write_str(&format_int(origin))
@@ -547,10 +608,7 @@ impl fmt::Display for Uuid {
 
 #[test]
 fn global_name_uuid() {
-    let uuid = Uuid::Name {
-        name: 824893205576155136,
-        scope: 0,
-    };
+    let uuid = Uuid::Name { name: 824893205576155136, scope: 0 };
 
     assert_eq!(uuid.is_name(), true);
     assert_eq!(uuid.is_number(), false);
@@ -561,10 +619,8 @@ fn global_name_uuid() {
 
 #[test]
 fn scoped_name_uuid() {
-    let uuid = Uuid::Name {
-        name: 1023340966896992256,
-        scope: 893360337800134656,
-    };
+    let uuid =
+        Uuid::Name { name: 1023340966896992256, scope: 893360337800134656 };
 
     assert_eq!(uuid.is_name(), true);
     assert_eq!(uuid.is_number(), false);
@@ -575,10 +631,7 @@ fn scoped_name_uuid() {
 
 #[test]
 fn number_uuid() {
-    let uuid = Uuid::Number {
-        value1: 10,
-        value2: 20,
-    };
+    let uuid = Uuid::Number { value1: 10, value2: 20 };
 
     assert_eq!(uuid.is_name(), false);
     assert_eq!(uuid.is_number(), true);
@@ -589,10 +642,7 @@ fn number_uuid() {
 
 #[test]
 fn event_uuid() {
-    let uuid = Uuid::Event {
-        timestamp: 0,
-        origin: 0,
-    };
+    let uuid = Uuid::Event { timestamp: 0, origin: 0 };
 
     assert_eq!(uuid.is_name(), false);
     assert_eq!(uuid.is_number(), false);
@@ -603,10 +653,7 @@ fn event_uuid() {
 
 #[test]
 fn derived_uuid() {
-    let uuid = Uuid::Derived {
-        timestamp: 0,
-        origin: 0,
-    };
+    let uuid = Uuid::Derived { timestamp: 0, origin: 0 };
 
     assert_eq!(uuid.is_name(), false);
     assert_eq!(uuid.is_number(), false);
@@ -617,9 +664,9 @@ fn derived_uuid() {
 
 #[test]
 fn well_known() {
-    let error = Uuid::Name{ name: 1152921504606846975, scope: 0 };
-    let never = Uuid::Name{ name: 1134907106097364992, scope: 0 };
-    let inc = Uuid::Name{ name: 824893205576155136, scope: 0 };
+    let error = Uuid::Name { name: 1152921504606846975, scope: 0 };
+    let never = Uuid::Name { name: 1134907106097364992, scope: 0 };
+    let inc = Uuid::Name { name: 824893205576155136, scope: 0 };
 
     assert_eq!(format!("{}", error), "~~~~~~~~~~");
     assert_eq!(format!("{}", never), "~");
@@ -723,7 +770,7 @@ fn parse_all() {
         (")A+B", "012345678A+B"),        // 11101
         (")A+(", "012345678A+abcd"),     // 11110
         (")A+(B", "012345678A+abcdB"),   // 11111
-        ];
+    ];
     let z = Uuid::zero();
     let ctx = Uuid::parse("0123456789-abcdefghi", &z, &z).unwrap().0;
     for (uu, exp) in pairs {
@@ -735,4 +782,3 @@ fn parse_all() {
         }
     }
 }
-
