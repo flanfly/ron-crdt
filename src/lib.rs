@@ -33,12 +33,14 @@ extern crate chrono;
 extern crate smallvec;
 
 pub mod atom;
+pub mod crdt;
 pub mod frame;
 pub mod heap;
 pub mod op;
 pub mod uuid;
 
 pub use atom::Atom;
+pub use crdt::{Set, CRDT, LWW};
 pub use frame::Frame;
 pub use heap::{FrameOrd, Heap};
 pub use op::{Op, Terminator};
