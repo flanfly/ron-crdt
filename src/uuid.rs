@@ -147,6 +147,20 @@ impl UUID {
         }
     }
 
+    /// Returns true if `high() = low() = 0`.
+    pub fn is_zero(&self) -> bool {
+        self.high() == 0 && self.low() == 0
+    }
+
+    /// Compares `a` and `b` while ignoring the scheme.
+    pub fn weak_cmp(a: &UUID, b: &UUID) -> Ordering {
+        if a.high() == b.high() {
+            a.low().cmp(&b.low())
+        } else {
+            a.high().cmp(&b.high())
+        }
+    }
+
     /// Parse a single UUID and return the remaining string. The `context` argument is the pair
     /// `previous column UUID` / `previous row UUID` or `None`.
     pub fn parse<'a>(
