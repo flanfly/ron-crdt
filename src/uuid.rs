@@ -1,4 +1,6 @@
+use std::cmp::Ordering;
 use std::fmt;
+use std::str::FromStr;
 use std::sync::atomic::{self, AtomicUsize, ATOMIC_USIZE_INIT};
 use std::time::SystemTime;
 
@@ -51,7 +53,7 @@ enum ParserState {
 /// That leaves 2 bits to make up a 128-bit number. These 2 bits are
 /// always 0 and are provided for backwards compatibility with RFC4122
 /// (variant field).
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum UUID {
     /// Name UUIDs are often used to encode short string atoms, such as types (e.g. `lww`).
     /// The string is read as a Base64-literal to determine the actual (numeric) UUID component.
@@ -613,6 +615,17 @@ impl UUID {
             | seq;
 
         ts
+    }
+}
+
+impl FromStr for UUID {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match UUID::parse(s, None) {
+            Some((uu, _)) => Ok(uu),
+            None => Err(()),
+        }
     }
 }
 
