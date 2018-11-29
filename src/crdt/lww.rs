@@ -7,9 +7,20 @@ pub struct LWW;
 
 impl LWW {
     pub fn set<'a>(
-        _state: &Frame<'a>, _key: UUID, _value: &str,
+        state: &Frame<'a>, key: UUID, value: Atom,
     ) -> Option<Frame<'a>> {
-        unimplemented!()
+        state.peek().map(|op| {
+            let &Op { ref object, .. } = op;
+
+            Frame::compress(vec![Op {
+                ty: UUID::from_str("lww").unwrap(),
+                object: object.clone(),
+                event: UUID::now(),
+                location: key,
+                atoms: vec![value].into(),
+                term: Terminator::Raw,
+            }])
+        })
     }
 }
 
@@ -257,5 +268,67 @@ mod tests {
             r.clone().map(|x| format!("{} ", x)).collect::<Vec<_>>()
         );
         assert_eq!(exp.collect::<Vec<_>>(), r.collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn map_basic_7() {
+        use std::str::FromStr;
+        let frm = Frame::parse(
+            "*lww#raw@2:1!@1 :one =1 ,@2 :three 'три' ,:two ^2.000000e+00 ,",
+        );
+        let r = LWW::map(frm).unwrap();
+        let mut exp = HashMap::default();
+
+        exp.insert(UUID::from_str("one").unwrap(), Atom::Integer(1));
+        exp.insert(UUID::from_str("two").unwrap(), Atom::Float(2.0));
+        exp.insert(
+            UUID::from_str("three").unwrap(),
+            Atom::String("три".to_string()),
+        );
+
+        assert_eq!(exp, r);
+    }
+
+    #[test]
+    fn map_empty() {
+        let frm = LWW::new(UUID::now());
+        let r = LWW::map(frm).unwrap();
+        let exp = HashMap::default();
+
+        assert_eq!(exp, r);
+    }
+
+    #[test]
+    fn map_insert() {
+        use std::iter::FromIterator;
+
+        let key = UUID::from_str("a").unwrap();
+
+        // empty set
+        let st0 = LWW::new(UUID::now());
+        let exp0 = HashMap::default();
+        assert_eq!(exp0, LWW::map(st0.clone()).unwrap());
+
+        // set 'a' to =1
+        let ch1 = LWW::set(&st0, key, Atom::Integer(1)).unwrap();
+        let st1 = LWW::reduce(st0, vec![ch1]).unwrap();
+        let exp1 =
+            HashMap::from_iter(vec![(key, Atom::Integer(1))].into_iter());
+        assert_eq!(exp1, LWW::map(st1.clone()).unwrap());
+
+        // set 'a' to =1
+        let ch2 = LWW::set(&st1, key, Atom::Integer(1)).unwrap();
+        let st2 = LWW::reduce(st1, vec![ch2]).unwrap();
+        let exp2 =
+            HashMap::from_iter(vec![(key, Atom::Integer(1))].into_iter());
+        assert_eq!(exp2, LWW::map(st2.clone()).unwrap());
+
+        // set 'a' to =2
+        let ch3 = LWW::set(&st2, key, Atom::Integer(2)).unwrap();
+        let st3 = LWW::reduce(st2, vec![ch3]).unwrap();
+        let exp3 = HashMap::from_iter(
+            vec![(key, Atom::Integer(1)), (key, Atom::Integer(2))].into_iter(),
+        );
+        assert_eq!(exp3, LWW::map(st3.clone()).unwrap());
     }
 }
