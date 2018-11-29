@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use Op;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Frame<'a> {
     body: Cow<'a, str>,
     ptr: usize,
