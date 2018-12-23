@@ -1,5 +1,5 @@
 [package]
-name = "ron"
+name = "ron-crdt"
 version = "0.1.0"
 authors = ["Marcus Brinkmann <marcus.brinkmann@ruhr-uni-bochum.de>"]
 

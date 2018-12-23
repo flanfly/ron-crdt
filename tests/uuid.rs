@@ -1,4 +1,4 @@
-extern crate ron;
+extern crate ron_crdt as ron;
 
 use ron::UUID;
 
