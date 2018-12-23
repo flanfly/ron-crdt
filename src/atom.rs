@@ -1,3 +1,5 @@
+//! Op palyoads
+
 use std::f64;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -13,9 +15,13 @@ use UUID;
 /// integer, string and float.
 #[derive(Clone)]
 pub enum Atom {
+    /// References another object
     UUID(UUID),
+    /// Signed integer. RON specifies arbitrary pecicion integer, we only support up to 64 bits.
     Integer(i64),
+    /// IEEE 754 Floating point number.
     Float(f64),
+    /// UTF-8 String
     String(String),
 }
 
@@ -135,7 +141,7 @@ impl Atom {
         }
     }
 
-    pub fn parse_string<'a>(input: &'a str) -> Option<(Self, &'a str)> {
+    fn parse_string<'a>(input: &'a str) -> Option<(Self, &'a str)> {
         scan_for_string(input).map(|off| {
             let (a, b) = input.split_at(off);
             (Atom::String(a.to_string()), &b[1..])

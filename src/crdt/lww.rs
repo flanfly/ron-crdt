@@ -1,11 +1,16 @@
+//! Last-writer wins dictionary.
+
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::str::FromStr;
 use {Atom, Frame, FrameOrd, Op, Terminator, CRDT, UUID};
 
+/// An LWW is an associated map from UUIDs to Atoms. Conflicting writes are merge by using the Op
+/// event timestamp. The last writes wins.
 pub struct LWW;
 
 impl LWW {
+    /// Sets `key` to `value` in LWW `state`. Returns the update Frame without modifing the state.
     pub fn set<'a>(
         state: &Frame<'a>, key: UUID, value: Atom,
     ) -> Option<Frame<'a>> {

@@ -1,3 +1,5 @@
+//! Conflict-freee replicated datatypes.
+
 use std::fmt::Debug;
 use std::iter;
 use {Frame, FrameOrd, Heap, Op, Terminator, UUID};
@@ -8,19 +10,22 @@ pub use self::lww::LWW;
 mod set;
 pub use self::set::Set;
 
+/// Operations common to all Conflict-free Repicated Datatypes modeled by RON.
 pub trait CRDT {
+    /// Rust type this CRDT can be mapped to.
     type T;
 
+    /// Returns the state Frame of a new, empty CRDT instance with UUID `obj`.
     fn new<'a>(obj: UUID) -> Frame<'a>;
+    /// Reduce state Frame `state` and update Frames `updates` to a new state Frame.
     fn reduce<'a>(
         state: Frame<'a>, updates: Vec<Frame<'a>>,
     ) -> Option<Frame<'a>>;
+    /// Maps the state Frame `state` to a Rust type.
     fn map<'a>(state: Frame<'a>) -> Option<Self::T>;
 }
 
-pub fn merge<'a, F>(
-    state: Frame<'a>, updates: Vec<Frame<'a>>,
-) -> Option<Frame<'a>>
+fn merge<'a, F>(state: Frame<'a>, updates: Vec<Frame<'a>>) -> Option<Frame<'a>>
 where
     F: FrameOrd<'a> + Debug,
 {

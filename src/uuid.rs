@@ -1,3 +1,5 @@
+//! UUID
+
 use std::cmp::Ordering;
 use std::fmt;
 use std::str::FromStr;
@@ -58,18 +60,38 @@ pub enum UUID {
     /// Name UUIDs are often used to encode short string atoms, such as types (e.g. `lww`).
     /// The string is read as a Base64-literal to determine the actual (numeric) UUID component.
     /// Name UUIDs can be *global* (e.g. `lww` = `lww$0`) or *scoped* (e.g. `dbtest$client1`)
-    Name { name: u64, scope: u64 },
+    Name {
+        /// Local name.
+        name: u64,
+        /// Global namespace/node ID.
+        scope: u64,
+    },
 
     /// Number UUIDs encode numbers (e.g. indices into a matrix) and hash values. The meaning of
     /// the two values is context-dependent.
-    Number { value1: u64, value2: u64 },
+    Number {
+        /// First value.
+        value1: u64,
+        /// Second value.
+        value2: u64,
+    },
 
     /// Event UUIDs are Lamport-timestamps that are used to identify operations and objects.
     /// The timestamp is clock-dependent, while the origin is a replica ID.
-    Event { timestamp: u64, origin: u64 },
+    Event {
+        /// Local timestamp.
+        timestamp: u64,
+        /// Global namespace/node ID.
+        origin: u64,
+    },
 
     /// Derived UUIDs refer to an event ID, without being the event ID.
-    Derived { timestamp: u64, origin: u64 },
+    Derived {
+        /// Local timestamp.
+        timestamp: u64,
+        /// Global namespace/node ID.
+        origin: u64,
+    },
 }
 
 /// This is the alphabet for the Swarm variant of Base64 encoding.
@@ -111,6 +133,7 @@ impl UUID {
         UUID::Event { origin: Self::node_id(), timestamp: Self::timestamp() }
     }
 
+    /// Creates a new 0 UUID
     pub fn zero() -> Self {
         UUID::Name { name: 0, scope: 0 }
     }

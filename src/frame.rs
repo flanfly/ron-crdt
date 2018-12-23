@@ -1,6 +1,11 @@
+//! Frame
+
 use std::borrow::Cow;
 use Op;
 
+/// A Frame is an ordered, immutable sequence of Ops.
+///
+/// Frames support iterating over the Ops contained.
 #[derive(Debug, Clone)]
 pub struct Frame<'a> {
     body: Cow<'a, str>,
@@ -9,6 +14,7 @@ pub struct Frame<'a> {
 }
 
 impl<'a> Frame<'a> {
+    /// Create a new frame from text encoded Ops `s`.
     pub fn parse<S>(s: S) -> Frame<'a>
     where
         S: Into<Cow<'a, str>>,
@@ -19,6 +25,7 @@ impl<'a> Frame<'a> {
         ret
     }
 
+    /// Encode and compress `ops` into the text format.
     pub fn compress(ops: Vec<Op>) -> Self {
         if ops.is_empty() {
             return Self::parse("");
@@ -33,6 +40,7 @@ impl<'a> Frame<'a> {
         Self::parse(txt)
     }
 
+    /// Returns the first Op in this frame.
     pub fn peek<'b>(&'b self) -> Option<&'b Op> {
         if self.ptr > self.body.len() {
             None
@@ -41,6 +49,7 @@ impl<'a> Frame<'a> {
         }
     }
 
+    /// Returns the text encoding of all Ops in the Frame.
     pub fn body(&self) -> &str {
         &self.body
     }

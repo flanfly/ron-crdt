@@ -29,6 +29,8 @@
 //! included in an operation (for example, a handshake query does not
 //! have a timestamp).
 
+#![warn(missing_docs)]
+
 extern crate chrono;
 extern crate smallvec;
 

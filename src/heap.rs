@@ -1,11 +1,17 @@
+//! Frame Heap
+
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::fmt::Debug;
 use {Frame, Op, Terminator};
 
+/// Helper trait for configuring `Heap`s order.
 pub trait FrameOrd<'a>: From<Frame<'a>> + Iterator<Item = Op> {
+    /// Return the first Op in the Frame.
     fn peek<'b>(&'b self) -> Option<&'b Op>;
+    /// Compare `a` and `b` using the primary comparison function.
     fn primary_cmp(a: &Op, b: &Op) -> Ordering;
+    /// Compare `a` and `b` using the secondary comparison function.
     fn secondary_cmp(a: &Op, b: &Op) -> Ordering;
 }
 
@@ -56,6 +62,7 @@ where
 
 impl<'a, T> Eq for Wrapper<T> where T: FrameOrd<'a> {}
 
+/// Am Iterator heap of Frames.
 pub struct Heap<T> {
     heap: BinaryHeap<Wrapper<T>>,
     top: Option<Op>,
@@ -65,6 +72,7 @@ impl<'a, T> Heap<T>
 where
     T: FrameOrd<'a> + Debug,
 {
+    /// Create a new Heap from `batch`.
     pub fn new(batch: Vec<Frame<'a>>) -> Self {
         let mut heap = BinaryHeap::default();
 
@@ -92,10 +100,12 @@ where
         ret
     }
 
+    /// Returns the smallest of all initial Ops of all Frames.
     pub fn top<'b>(&'b self) -> Option<&'b Op> {
         self.top.as_ref()
     }
 
+    /// Returns and removes the smallest of all initial Ops of all Frames.
     pub fn pop(&mut self) -> Option<Op> {
         use std::mem;
 

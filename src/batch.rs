@@ -1,3 +1,5 @@
+//! Batch
+
 use std::borrow::Cow;
 use std::ops::Range;
 
@@ -6,6 +8,7 @@ use scan_for_integer;
 use scan_for_string;
 use Frame;
 
+/// An iterator over frames.
 #[derive(Clone, Debug)]
 pub struct Batch<'a> {
     body: Cow<'a, str>,
@@ -13,6 +16,7 @@ pub struct Batch<'a> {
 }
 
 impl<'a> Batch<'a> {
+    /// Crates a new batch from text encoded frames `s`.
     pub fn parse<S>(s: S) -> Batch<'a>
     where
         S: Into<Cow<'a, str>>,

@@ -1,17 +1,21 @@
+//! Op
+
 use std::fmt;
 
 use smallvec::SmallVec;
 use Atom;
 use UUID;
 
+/// Op terminator
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Terminator {
-    // Raw ops are stand-alone within a frame.
+    /// Raw ops are stand-alone within a frame.
     Raw,
-    // Query and header ops, as well as reduced ops following them, create a chunk in a frame.
+    /// Query ops, as well as reduced ops following them, create a chunk in a frame.
     Query,
+    /// Header ops, as well as reduced ops following them, create a chunk in a frame.
     Header,
-    // Reduced ops belong to the query/header op before them.
+    /// Reduced ops belong to the query/header op before them.
     Reduced,
 }
 
@@ -39,6 +43,7 @@ impl Default for Terminator {
 }
 
 impl Terminator {
+    /// Parse a terminator from `inp`.
     pub fn from_string(inp: &str) -> Result<Terminator, &'static str> {
         match &inp {
             &";" => Ok(Terminator::Raw),
@@ -49,6 +54,7 @@ impl Terminator {
         }
     }
 
+    /// Parse a terminator from `inp`.
     pub fn from_char(inp: char) -> Result<Terminator, &'static str> {
         Terminator::from_string(&inp.to_string())
     }
@@ -62,11 +68,17 @@ impl Terminator {
 /// atoms, and a terminator.
 #[derive(Clone, PartialEq)]
 pub struct Op {
+    /// Op type.
     pub ty: UUID,
+    /// Object this Op modifies.
     pub object: UUID,
+    /// Event timestamp
     pub event: UUID,
+    /// Location/field inside the object.
     pub location: UUID,
+    /// Op payload.
     pub atoms: SmallVec<[Atom; 3]>,
+    /// Op terminator.
     pub term: Terminator,
 }
 
