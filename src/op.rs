@@ -86,7 +86,7 @@ impl Op {
             let mut prev_uu = prev.as_ref().map(|p| &p.location);
 
             // type
-            ret = ret.trim_left();
+            ret = ret.trim_start();
             if ret.starts_with('*') {
                 let ctx = prev.as_ref().map(|p| (&p.ty, prev_uu.unwrap()));
 
@@ -107,7 +107,7 @@ impl Op {
             }
 
             // object
-            ret = ret.trim_left();
+            ret = ret.trim_start();
             if ret.starts_with('#') {
                 let ctx = prev.as_ref().map(|p| (&p.object, prev_uu.unwrap()));
 
@@ -128,7 +128,7 @@ impl Op {
             }
 
             // event
-            ret = ret.trim_left();
+            ret = ret.trim_start();
             if ret.starts_with('@') {
                 let ctx = prev.as_ref().map(|p| (&p.event, prev_uu.unwrap()));
 
@@ -149,7 +149,7 @@ impl Op {
             }
 
             // location
-            ret = ret.trim_left();
+            ret = ret.trim_start();
             if ret.starts_with(':') {
                 let ctx =
                     prev.as_ref().map(|p| (&p.location, prev_uu.unwrap()));
@@ -229,7 +229,7 @@ impl Op {
         }
 
         // Terminator
-        ret = ret.trim_left();
+        ret = ret.trim_start();
         match ret.chars().next() {
             Some('!') => {
                 prev.term = Terminator::Header;
