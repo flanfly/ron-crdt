@@ -1,4 +1,4 @@
-//! Op palyoads
+//! Op payloads
 
 use std::f64;
 use std::fmt;
@@ -17,7 +17,7 @@ use UUID;
 pub enum Atom {
     /// References another object
     UUID(UUID),
-    /// Signed integer. RON specifies arbitrary pecicion integer, we only support up to 64 bits.
+    /// Signed integer. RON specifies arbitrary precision integer, we only support up to 64 bits.
     Integer(i64),
     /// IEEE 754 Floating point number.
     Float(f64),

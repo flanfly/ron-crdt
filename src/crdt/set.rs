@@ -6,13 +6,15 @@ use std::default::Default;
 use std::str::FromStr;
 use {Atom, Frame, FrameOrd, Op, Terminator, CRDT, UUID};
 
-/// 2-Phase sets are sets of atoms. Each element is associated with the timestamp of the Op that
+/// 2-Phase sets are sets of atoms.
+///
+/// Each element is associated with the timestamp of the Op that
 /// inserted it. Removing elements is done my inserting a tombstone. Thus, deletions override
 /// insertions.
 pub struct Set;
 
 impl Set {
-    /// Inserts `value` into the Set `state`. Returns the update Frame without modifing the Set.
+    /// Inserts `value` into the Set `state`. Returns the update Frame without modifying the Set.
     pub fn insert<'a>(state: &Frame<'a>, value: Atom) -> Option<Frame<'a>> {
         state.peek().map(|op| {
             let &Op { ref ty, ref object, .. } = op;
@@ -29,7 +31,7 @@ impl Set {
     }
 
     /// Removes `value` from the Set `state` by inserting a tombstone for all insertions of
-    /// `value`. Returns the update Frame without modifing the Set.
+    /// `value`. Returns the update Frame without modifying the Set.
     pub fn remove<'a>(state: Frame<'a>, value: &Atom) -> Option<Frame<'a>> {
         Some(Frame::compress(
             state

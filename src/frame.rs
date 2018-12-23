@@ -1,4 +1,4 @@
-//! Frame
+//! Sequence of Ops
 
 use std::borrow::Cow;
 use Op;

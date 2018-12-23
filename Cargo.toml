@@ -1,11 +1,14 @@
 [package]
 name = "ron-crdt"
-version = "0.1.0"
+version = "0.2.0"
 authors = [ "Marcus Brinkmann <marcus.brinkmann@ruhr-uni-bochum.de>", "Kai Michaelis <seu@p8n.io>" ]
 description = "Replicated Object Notation for Rust"
 keywords = ["crdt", "ron"]
 categories = ["parser-implementations"]
 license = "LGPL-2.1-or-later OR MIT"
+readme = "README.md"
+repository = "https://github.com/flanfly/ron-rs"
+documentation = "https://docs.rs/ron-crdt/"
 
 [dependencies]
 smallvec = "0.6"

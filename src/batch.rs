@@ -1,4 +1,4 @@
-//! Batch
+//! Batch of Frames
 
 use std::borrow::Cow;
 use std::ops::Range;

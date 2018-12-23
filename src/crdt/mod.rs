@@ -1,4 +1,4 @@
-//! Conflict-freee replicated datatypes.
+//! Conflict-free replicated datatypes.
 
 use std::fmt::Debug;
 use std::iter;
@@ -10,7 +10,7 @@ pub use self::lww::LWW;
 mod set;
 pub use self::set::Set;
 
-/// Operations common to all Conflict-free Repicated Datatypes modeled by RON.
+/// Operations common to all Conflict-free Replicated Datatypes modeled by RON.
 pub trait CRDT {
     /// Rust type this CRDT can be mapped to.
     type T;

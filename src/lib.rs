@@ -1,4 +1,4 @@
-//! This is documentation for the `ron` crate.
+//! This is documentation for the `ron-crdt` crate.
 //!
 //! RON is the Replicated Object Notation, a distributed live data format
 //! by [Victor Grishchenko](https://github.com/gritzko).
