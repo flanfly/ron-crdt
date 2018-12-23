@@ -170,7 +170,6 @@ impl UUID {
         let mut prev = context.map(|x| x.0);
 
         for (off, ch) in input.char_indices() {
-            eprintln!("ch: {} state: {:?}", ch, state);
             match ch as u8 {
                 // base64 char
                 b'0'...b'9' | b'A'...b'Z' | b'_' | b'a'...b'z' | b'~' => {
@@ -403,7 +402,6 @@ impl UUID {
             }
         }
 
-        eprintln!("EOF state: {:?}", state);
         // stream ended
         match state {
             ParserState::Start => {

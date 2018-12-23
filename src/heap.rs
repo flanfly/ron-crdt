@@ -112,36 +112,27 @@ where
 
     fn advance(&mut self) -> Option<Op> {
         loop {
-            //eprintln!("before {:#?}", self.heap);
             match self.heap.pop() {
                 Some(mut frm) => {
                     match frm.inner.peek().cloned() {
-                        Some(op @ Op { term: Terminator::Header, .. })
-                        | Some(op @ Op { term: Terminator::Query, .. }) => {
-                            eprintln!("skip: {}", op);
+                        Some(Op { term: Terminator::Header, .. })
+                        | Some(Op { term: Terminator::Query, .. }) => {
                             frm.inner.next();
                             self.heap.push(frm);
                             /* continue */
                         }
                         Some(op) => {
-                            eprintln!("proc: {}", op);
                             self.heap.push(frm);
                             self.drain(&op);
-                            //eprintln!("after {:?}", self.heap);
                             return Some(op);
                         }
-                        None => {
-                            eprintln!("frame empty"); /* continue */
-                        }
+                        None => {}
                     }
                 }
                 None => {
-                    eprintln!("heap empty");
                     return None;
                 }
             }
-
-            //eprintln!("after {:?}", self.heap);
         }
     }
 
@@ -152,7 +143,6 @@ where
             loop {
                 match frm.inner.peek().cloned() {
                     Some(ref p) if T::primary_cmp(p, op) == Ordering::Equal => {
-                        eprintln!("drain {}", p);
                         frm.inner.next();
                     }
                     _ => {
