@@ -1,14 +1,10 @@
 [package]
 name = "ron-crdt"
 version = "0.1.0"
-authors = [
-  "Marcus Brinkmann <marcus.brinkmann@ruhr-uni-bochum.de>",
-  "Kai Michaelis <seu@p8n.io>
-]
-edition = '2018'
+authors = [ "Marcus Brinkmann <marcus.brinkmann@ruhr-uni-bochum.de>", "Kai Michaelis <seu@p8n.io>" ]
 description = "Replicated Object Notation for Rust"
 keywords = ["crdt", "ron"]
-category = "parser-implementations"
+categories = ["parser-implementations"]
 license = "LGPL-2.1-or-later OR MIT"
 
 [dependencies]
