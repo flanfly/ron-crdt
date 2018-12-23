@@ -45,3 +45,40 @@ pub use frame::Frame;
 pub use heap::{FrameOrd, Heap};
 pub use op::{Op, Terminator};
 pub use uuid::UUID;
+
+fn scan_for_integer<'a>(input: &'a str) -> Option<usize> {
+    input.chars().position(|c| !c.is_ascii_digit() && c != '-' && c != '+')
+}
+
+fn scan_for_float<'a>(input: &'a str) -> Option<usize> {
+    input.chars().position(|c| {
+        !c.is_ascii_digit()
+            && c != 'e'
+            && c != 'E'
+            && c != '.'
+            && c != '-'
+            && c != '+'
+    })
+}
+
+fn scan_for_string<'a>(input: &'a str) -> Option<usize> {
+    let mut escaped = false;
+    for (off, ch) in input.char_indices() {
+        escaped = match (ch, escaped) {
+            ('\'', false) if off != 0 => return Some(off),
+            ('\'', false) => return None,
+            ('\'', true) => false,
+
+            ('\\', false) => true,
+            ('\\', true) => false,
+
+            ('n', true) => false,
+            ('t', true) => false,
+
+            (_, false) => false,
+            (_, true) => false,
+        };
+    }
+
+    None
+}

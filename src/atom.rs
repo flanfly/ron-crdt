@@ -3,6 +3,10 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::i64;
 use std::str::FromStr;
+
+use scan_for_float;
+use scan_for_integer;
+use scan_for_string;
 use UUID;
 
 /// An Atom in RON is an immutable value of one of the types: UUID,
@@ -112,10 +116,7 @@ impl Atom {
     }
 
     fn parse_integer<'a>(input: &'a str) -> Option<(Self, &'a str)> {
-        let p = input
-            .chars()
-            .position(|c| !c.is_ascii_digit() && c != '-' && c != '+')
-            .unwrap_or(input.len());
+        let p = scan_for_integer(input).unwrap_or(input.len());
         if p == 0 {
             None
         } else {
@@ -125,17 +126,7 @@ impl Atom {
     }
 
     fn parse_float<'a>(input: &'a str) -> Option<(Self, &'a str)> {
-        let p = input
-            .chars()
-            .position(|c| {
-                !c.is_ascii_digit()
-                    && c != 'e'
-                    && c != 'E'
-                    && c != '.'
-                    && c != '-'
-                    && c != '+'
-            })
-            .unwrap_or(input.len());
+        let p = scan_for_float(input).unwrap_or(input.len());
         if p == 0 {
             None
         } else {
@@ -144,29 +135,11 @@ impl Atom {
         }
     }
 
-    fn parse_string<'a>(input: &'a str) -> Option<(Self, &'a str)> {
-        let mut escaped = false;
-        for (off, ch) in input.char_indices() {
-            escaped = match (ch, escaped) {
-                ('\'', false) if off != 0 => {
-                    let (a, b) = input.split_at(off);
-                    return Some((Atom::String(a.to_string()), &b[1..]));
-                }
-                ('\'', false) => return None,
-                ('\'', true) => false,
-
-                ('\\', false) => true,
-                ('\\', true) => false,
-
-                ('n', true) => false,
-                ('t', true) => false,
-
-                (_, false) => false,
-                (_, true) => false,
-            };
-        }
-
-        None
+    pub fn parse_string<'a>(input: &'a str) -> Option<(Self, &'a str)> {
+        scan_for_string(input).map(|off| {
+            let (a, b) = input.split_at(off);
+            (Atom::String(a.to_string()), &b[1..])
+        })
     }
 }
 
