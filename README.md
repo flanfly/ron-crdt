@@ -1,14 +1,16 @@
 Replicated Object Notation (RON) for Rust
 =========================================
 
-[RON](https://github.com/gritzko/ron) is a protocol for synchronizing
+[RON](http://replicated.cc) is a protocol for synchronizing
 Conflict-free Replicated Datatypes (CmRDT). The
 [documentation](https://docs.rs/ron-crdt) is hosted on `docs.rs`.
 
 Differences with the [reference implementation](https://github.com/gritzko/ron):
 
-1. Number vs Hash for UUID with variety 0?
-1. NewIntAtom(0)
+1. No support for UUID varieties yet.
+2. Only LWW and 2-Phase sets.
+3. Handshake protocol is missing.
+4. Emits close RON exclusively.
 
 Usage
 -----
@@ -16,7 +18,7 @@ Usage
 ```toml
 # Cargo.toml
 [dependencies]
-ron-crdt = "0.1"
+ron-crdt = "0.2.0"
 ```
 
 License
