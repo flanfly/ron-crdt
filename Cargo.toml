@@ -7,7 +7,7 @@ keywords = ["crdt", "ron"]
 categories = ["parser-implementations"]
 license = "LGPL-2.1-or-later OR MIT"
 readme = "README.md"
-repository = "https://github.com/flanfly/ron-rs"
+repository = "https://github.com/flanfly/ron-crdt"
 documentation = "https://docs.rs/ron-crdt/"
 
 [dependencies]
