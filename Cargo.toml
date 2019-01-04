@@ -1,6 +1,6 @@
 [package]
 name = "ron-crdt"
-version = "0.2.0"
+version = "0.3.0"
 authors = [ "Marcus Brinkmann <marcus.brinkmann@ruhr-uni-bochum.de>", "Kai Michaelis <seu@p8n.io>" ]
 description = "Replicated Object Notation for Rust"
 keywords = ["crdt", "ron"]
@@ -11,5 +11,5 @@ repository = "https://github.com/flanfly/ron-crdt"
 documentation = "https://docs.rs/ron-crdt/"
 
 [dependencies]
+ron-uuid = "0.2"
 smallvec = "0.6"
-chrono = "0.4"
