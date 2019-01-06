@@ -33,6 +33,8 @@
 
 extern crate ron_uuid;
 extern crate smallvec;
+#[macro_use]
+extern crate log;
 
 pub mod atom;
 pub mod batch;
