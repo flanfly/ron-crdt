@@ -1,6 +1,6 @@
 [package]
 name = "ron-crdt"
-version = "0.3.0"
+version = "0.3.1"
 authors = [ "Marcus Brinkmann <marcus.brinkmann@ruhr-uni-bochum.de>", "Kai Michaelis <seu@p8n.io>" ]
 description = "Replicated Object Notation for Rust"
 keywords = ["crdt", "ron"]
