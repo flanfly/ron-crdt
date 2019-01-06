@@ -1,6 +1,7 @@
 //! Batch of Frames
 
 use std::borrow::Cow;
+use std::io::{self, Write};
 use std::ops::Range;
 
 use scan_for_float;
@@ -32,6 +33,76 @@ impl<'a> Batch<'a> {
         }
 
         Batch { body: b, next: n }
+    }
+
+    /// Reduces all frames found in `self` and outputs the final status frames.
+    pub fn reduce_all<W>(self, mut out: W) -> io::Result<()>
+    where
+        W: Write,
+    {
+        use std::collections::HashMap;
+        use std::str::FromStr;
+        use {Op, Set, CRDT, LWW, UUID};
+
+        let mut index = HashMap::<UUID, (UUID, Vec<Frame<'a>>)>::default();
+
+        for frm in self {
+            match frm.peek().cloned() {
+                Some(Op { ty, object, .. }) => {
+                    let ent = index
+                        .entry(object)
+                        .or_insert_with(|| (ty.clone(), Vec::default()));
+
+                    if ent.0 == ty {
+                        ent.1.push(frm);
+                    } else {
+                        error!(
+                            "miss matched type/object pair: {} vs. {}",
+                            ent.0, ty
+                        );
+                        out.write_all(frm.body().as_bytes())?;
+                    }
+                }
+                None => {}
+            }
+        }
+
+        let lww = UUID::from_str("lww").unwrap();
+        let set = UUID::from_str("set").unwrap();
+
+        for (_, (ty, mut frames)) in index {
+            match frames.len() {
+                0 => {}
+                1 => {
+                    out.write_all(frames[0].body().as_bytes())?;
+                }
+                _ => {
+                    let s = frames.pop().unwrap();
+                    let state = if ty == lww {
+                        LWW::reduce(s, frames)
+                    } else if ty == set {
+                        Set::reduce(s, frames)
+                    } else {
+                        warn!("unknown type {}", ty);
+
+                        out.write_all(s.body().as_bytes())?;
+                        for frm in frames {
+                            out.write_all(frm.body().as_bytes())?;
+                        }
+                        continue;
+                    };
+
+                    match state {
+                        Some(state) => {
+                            out.write_all(state.body().as_bytes())?;
+                        }
+                        None => {}
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn scan(s: &str) -> Option<Range<usize>> {
@@ -240,5 +311,21 @@ mod tests {
             println!("frm {}", frm.body());
         }
         assert_eq!(b1.count(), 3);
+    }
+
+    #[test]
+    fn batch_reduce_all() {
+        use std::io::Cursor;
+        use std::str;
+
+        let b = Batch::parse(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/batch-test"
+        )));
+        let mut c = Cursor::new(Vec::default());
+        b.reduce_all(&mut c).unwrap();
+
+        let s = c.into_inner();
+        println!("{}", str::from_utf8(&s).unwrap());
     }
 }
