@@ -35,6 +35,8 @@ extern crate ron_uuid;
 extern crate smallvec;
 #[macro_use]
 extern crate log;
+#[cfg(test)]
+extern crate simple_logger;
 
 pub mod atom;
 pub mod batch;

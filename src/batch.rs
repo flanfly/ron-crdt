@@ -286,6 +286,7 @@ impl<'a> Iterator for Batch<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use simple_logger;
 
     #[test]
     fn batch_parse_none() {
@@ -317,6 +318,8 @@ mod tests {
     fn batch_reduce_all() {
         use std::io::Cursor;
         use std::str;
+
+        simple_logger::init_with_level(log::Level::Trace);
 
         let b = Batch::parse(include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
