@@ -57,8 +57,8 @@ impl<'a> Batch<'a> {
                         ent.1.push(frm);
                     } else {
                         error!(
-                            "miss matched type/object pair: {} vs. {}",
-                            ent.0, ty
+                            "miss matched type/object pair: {} vs. {} for object {}",
+                            ent.0, ty, object
                         );
                         out.write_all(frm.body().as_bytes())?;
                     }
