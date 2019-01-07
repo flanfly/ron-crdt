@@ -11,7 +11,7 @@ repository = "https://github.com/flanfly/ron-crdt"
 documentation = "https://docs.rs/ron-crdt/"
 
 [dependencies]
-ron-uuid = "0.2"
+ron-uuid = "0"
 smallvec = "0.6"
 log = "0.4"
 
