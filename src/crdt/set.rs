@@ -4,7 +4,10 @@ use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::default::Default;
 use std::str::FromStr;
-use {Atom, Frame, FrameOrd, Op, Terminator, CRDT, UUID};
+
+use uuid::UUID;
+
+use crate::{Atom, Frame, FrameOrd, Op, Terminator, CRDT};
 
 /// 2-Phase sets are sets of atoms.
 ///
@@ -77,8 +80,8 @@ impl CRDT for Set {
     }
 
     fn map<'a>(state: Frame<'a>) -> Option<Self::T> {
+        use crate::Terminator::*;
         use std::iter::FromIterator;
-        use Terminator::*;
 
         Some(HashSet::from_iter(state.filter_map(|mut op| {
             match op {

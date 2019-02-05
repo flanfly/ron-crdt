@@ -3,8 +3,9 @@
 use std::fmt;
 
 use smallvec::SmallVec;
-use Atom;
-use UUID;
+use uuid::UUID;
+
+use crate::Atom;
 
 /// Op terminator
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -359,7 +360,8 @@ impl fmt::Display for Op {
 
 #[test]
 fn compress_roundtrip() {
-    use Frame;
+    use crate::Frame;
+
     let f = Frame::parse(
         "
         *set#mice@1YKDXO3201+1YKDXO!

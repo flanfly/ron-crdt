@@ -31,7 +31,7 @@
 
 #![warn(missing_docs)]
 
-extern crate ron_uuid;
+extern crate ron_uuid as uuid;
 extern crate smallvec;
 #[macro_use]
 extern crate log;
@@ -45,13 +45,14 @@ pub mod frame;
 pub mod heap;
 pub mod op;
 
-pub use atom::Atom;
-pub use batch::Batch;
-pub use crdt::{Set, CRDT, LWW};
-pub use frame::Frame;
-pub use heap::{FrameOrd, Heap};
-pub use op::{Op, Terminator};
-pub use ron_uuid::UUID;
+pub use uuid::UUID;
+
+pub use crate::atom::Atom;
+pub use crate::batch::Batch;
+pub use crate::crdt::{Set, CRDT, LWW};
+pub use crate::frame::Frame;
+pub use crate::heap::{FrameOrd, Heap};
+pub use crate::op::{Op, Terminator};
 
 fn scan_for_integer<'a>(input: &'a str) -> Option<usize> {
     input.chars().position(|c| !c.is_ascii_digit() && c != '-' && c != '+')

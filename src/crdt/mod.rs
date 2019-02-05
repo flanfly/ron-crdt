@@ -2,7 +2,10 @@
 
 use std::fmt::Debug;
 use std::iter;
-use {Frame, FrameOrd, Heap, Op, Terminator, UUID};
+
+use uuid::UUID;
+
+use crate::{Frame, FrameOrd, Heap, Op, Terminator};
 
 mod lww;
 pub use self::lww::LWW;

@@ -3,7 +3,8 @@
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::fmt::Debug;
-use {Frame, Op, Terminator};
+
+use crate::{Frame, Op, Terminator};
 
 /// Helper trait for configuring `Heap`s order.
 pub trait FrameOrd<'a>: From<Frame<'a>> + Iterator<Item = Op> {
@@ -170,7 +171,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use {Heap, UUID};
+    use uuid::UUID;
+
+    use crate::Heap;
 
     #[derive(Debug)]
     struct HeapOrd<'a>(Frame<'a>);

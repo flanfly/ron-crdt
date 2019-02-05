@@ -6,10 +6,9 @@ use std::hash::{Hash, Hasher};
 use std::i64;
 use std::str::FromStr;
 
-use scan_for_float;
-use scan_for_integer;
-use scan_for_string;
-use UUID;
+use uuid::UUID;
+
+use crate::{scan_for_float, scan_for_integer, scan_for_string};
 
 /// An Atom in RON is an immutable value of one of the types: UUID,
 /// integer, string and float.

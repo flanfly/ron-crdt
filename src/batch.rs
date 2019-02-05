@@ -5,11 +5,9 @@ use std::collections::HashMap;
 use std::io::{self, Write};
 use std::ops::Range;
 
-use scan_for_float;
-use scan_for_integer;
-use scan_for_string;
-use Frame;
-use UUID;
+use uuid::UUID;
+
+use crate::{scan_for_float, scan_for_integer, scan_for_string, Frame};
 
 /// An iterator over frames.
 #[derive(Clone, Debug)]
@@ -40,7 +38,7 @@ impl<'a> Batch<'a> {
     /// Indexes all frames. Returns map from object UUID to a pair of type and frames refering to
     /// the object.
     pub fn index(self) -> Option<HashMap<UUID, (UUID, Vec<Frame<'a>>)>> {
-        use Op;
+        use crate::Op;
 
         let mut index = HashMap::<UUID, (UUID, Vec<Frame<'a>>)>::default();
 
@@ -73,9 +71,9 @@ impl<'a> Batch<'a> {
     where
         W: Write,
     {
+        use crate::{Set, CRDT, LWW};
         use std::io::{Error, ErrorKind};
         use std::str::FromStr;
-        use {Set, CRDT, LWW};
 
         let index = self
             .index()

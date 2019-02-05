@@ -1,7 +1,8 @@
 //! Sequence of Ops
 
 use std::borrow::Cow;
-use Op;
+
+use crate::Op;
 
 /// A Frame is an ordered, immutable sequence of Ops.
 ///
@@ -118,7 +119,7 @@ fn iter2() {
 
 #[test]
 fn empty_string() {
-    use Atom;
+    use crate::Atom;
     let mut frame = Frame::parse("*lww#raw@1:one'';");
     let op = frame.next().unwrap();
 

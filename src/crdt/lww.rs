@@ -3,7 +3,10 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::str::FromStr;
-use {Atom, Frame, FrameOrd, Op, Terminator, CRDT, UUID};
+
+use uuid::UUID;
+
+use crate::{Atom, Frame, FrameOrd, Op, Terminator, CRDT};
 
 /// An LWW is an associated map from UUIDs to Atoms.
 ///
@@ -51,8 +54,8 @@ impl CRDT for LWW {
     }
 
     fn map<'a>(state: Frame<'a>) -> Option<Self::T> {
+        use crate::Terminator::*;
         use std::iter::FromIterator;
-        use Terminator::*;
 
         Some(HashMap::from_iter(state.filter_map(|mut op| {
             match op {
