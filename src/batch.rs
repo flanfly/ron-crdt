@@ -319,7 +319,7 @@ mod tests {
         use std::io::Cursor;
         use std::str;
 
-        simple_logger::init_with_level(log::Level::Trace);
+        let _ = simple_logger::init_with_level(log::Level::Trace);
 
         let b = Batch::parse(include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
