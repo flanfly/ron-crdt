@@ -18,7 +18,7 @@ Usage
 ```toml
 # Cargo.toml
 [dependencies]
-ron-crdt = "0.3.2"
+ron-crdt = "0.4.0"
 ```
 
 License
