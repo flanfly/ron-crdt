@@ -72,8 +72,7 @@ fn scan_for_string<'a>(input: &'a str) -> Option<usize> {
     let mut escaped = false;
     for (off, ch) in input.char_indices() {
         escaped = match (ch, escaped) {
-            ('\'', false) if off != 0 => return Some(off),
-            ('\'', false) => return None,
+            ('\'', false) => return Some(off),
             ('\'', true) => false,
 
             ('\\', false) => true,

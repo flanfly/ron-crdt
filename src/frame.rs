@@ -115,3 +115,13 @@ fn iter2() {
         assert_eq!(op, frame.next());
     }
 }
+
+#[test]
+fn empty_string() {
+    use Atom;
+    let mut frame = Frame::parse("*lww#raw@1:one'';");
+    let op = frame.next().unwrap();
+
+    eprintln!("{:?}", op);
+    assert_eq!(op.atoms[0], Atom::String(String::default()))
+}
