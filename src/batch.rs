@@ -1,6 +1,7 @@
 //! Batch of Frames
 
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::io::{self, Write};
 use std::ops::Range;
 
@@ -8,6 +9,7 @@ use scan_for_float;
 use scan_for_integer;
 use scan_for_string;
 use Frame;
+use UUID;
 
 /// An iterator over frames.
 #[derive(Clone, Debug)]
@@ -35,14 +37,10 @@ impl<'a> Batch<'a> {
         Batch { body: b, next: n }
     }
 
-    /// Reduces all frames found in `self` and outputs the final status frames.
-    pub fn reduce_all<W>(self, mut out: W) -> io::Result<()>
-    where
-        W: Write,
-    {
-        use std::collections::HashMap;
-        use std::str::FromStr;
-        use {Op, Set, CRDT, LWW, UUID};
+    /// Indexes all frames. Returns map from object UUID to a pair of type and frames refering to
+    /// the object.
+    pub fn index(self) -> Option<HashMap<UUID, (UUID, Vec<Frame<'a>>)>> {
+        use Op;
 
         let mut index = HashMap::<UUID, (UUID, Vec<Frame<'a>>)>::default();
 
@@ -51,7 +49,7 @@ impl<'a> Batch<'a> {
                 Some(Op { ty, object, .. }) => {
                     let ent = index
                         .entry(object)
-                        .or_insert_with(|| (ty.clone(), Vec::default()));
+                        .or_insert_with(|| (ty.clone(), Default::default()));
 
                     if ent.0 == ty {
                         ent.1.push(frm);
@@ -60,13 +58,28 @@ impl<'a> Batch<'a> {
                             "miss matched type/object pair: {} vs. {} for object {}",
                             ent.0, ty, object
                         );
-                        out.write_all(frm.body().as_bytes())?;
+                        return None;
                     }
                 }
                 None => {}
             }
         }
 
+        Some(index)
+    }
+
+    /// Reduces all frames found in `self` and outputs the final status frames.
+    pub fn reduce_all<W>(self, mut out: W) -> io::Result<()>
+    where
+        W: Write,
+    {
+        use std::io::{Error, ErrorKind};
+        use std::str::FromStr;
+        use {Set, CRDT, LWW};
+
+        let index = self
+            .index()
+            .ok_or(Error::new(ErrorKind::Other, "indexing failed"))?;
         let lww = UUID::from_str("lww").unwrap();
         let set = UUID::from_str("set").unwrap();
 
@@ -287,6 +300,7 @@ impl<'a> Iterator for Batch<'a> {
 mod tests {
     use super::*;
     use simple_logger;
+    use std::str::FromStr;
 
     #[test]
     fn batch_parse_none() {
@@ -330,5 +344,52 @@ mod tests {
 
         let s = c.into_inner();
         println!("{}", str::from_utf8(&s).unwrap());
+    }
+
+    #[test]
+    fn index_one_obj() {
+        let b1 = Batch::parse(
+            "*lww#test@0:0! @1:key'value' *lww#test@2:0! @3:number=1",
+        );
+        let idx = b1.index().unwrap();
+        let obj = UUID::from_str("test").unwrap();
+        let ty = UUID::from_str("lww").unwrap();
+
+        assert_eq!(idx.len(), 1);
+        assert_eq!(idx[&obj].0, ty);
+        assert_eq!(idx[&obj].1.len(), 2);
+    }
+
+    #[test]
+    fn index_multiple_obj() {
+        let b1 = Batch::parse("*lww#test@0:0! @1:key'value' @2:number=1 *rga#text@3:0'T'! *rga#text@6:3, @4'e' @5'x' @6't' *lww#more:a=1;.");
+        let idx = b1.index().unwrap();
+        let obj1 = UUID::from_str("test").unwrap();
+        let obj2 = UUID::from_str("text").unwrap();
+        let ty1 = UUID::from_str("lww").unwrap();
+        let ty2 = UUID::from_str("rga").unwrap();
+
+        assert_eq!(idx.len(), 2);
+        assert_eq!(idx[&obj1].0, ty1);
+        assert_eq!(idx[&obj1].1.len(), 1);
+        assert_eq!(idx[&obj2].0, ty2);
+        assert_eq!(idx[&obj2].1.len(), 1);
+    }
+
+    #[test]
+    fn index_diff_type() {
+        let b1 = Batch::parse(
+            "*lww#test@0:0! @1:key'value' *rga#test@2:0! @3:number=1",
+        );
+
+        assert!(b1.index().is_none());
+    }
+
+    #[test]
+    fn index_empty_batch() {
+        let b1 = Batch::parse("");
+        let idx = b1.index().unwrap();
+
+        assert!(idx.is_empty());
     }
 }
