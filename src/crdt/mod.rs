@@ -41,10 +41,10 @@ where
         }
     };
     let (min, max) = {
-        let mut events = iter::once(&state)
+        let events = iter::once(&state)
             .chain(updates.iter())
             .filter_map(|frm| frm.peek().as_ref().map(|op| op.event.clone()));
-        let mut min = events
+        let min = events
             .clone()
             .min_by(|a, b| UUID::weak_cmp(a, b))
             .unwrap_or_else(UUID::zero);

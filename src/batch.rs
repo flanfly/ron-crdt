@@ -259,7 +259,7 @@ impl<'a> Iterator for Batch<'a> {
         let p = self.next.take();
         let end = p.clone().map(|x| x.start).unwrap_or(self.body.len());
         let ret = match &mut self.body {
-            &mut Cow::Borrowed(mut s) => Frame::parse(&s[..end]),
+            &mut Cow::Borrowed(s) => Frame::parse(&s[..end]),
             &mut Cow::Owned(ref mut s) => Frame::parse(s[..end].to_string()),
         };
 
